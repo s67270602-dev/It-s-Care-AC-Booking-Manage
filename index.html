@@ -1,39 +1,37 @@
 <!DOCTYPE html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>이끌림잇츠케어 에어컨청소 관리</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>이끌림잇츠케어 에어컨청소 관리</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: { primary: "#2563eb", primary2: "#4f46e5" },
-            fontFamily: {
-              sans: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
-            },
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: "#2563eb", primary2: "#4f46e5" },
+          fontFamily: {
+            sans: ["system-ui","-apple-system","BlinkMacSystemFont","Segoe UI","Roboto","sans-serif"],
           },
         },
-      };
-    </script>
+      },
+    };
+  </script>
 
-    <style>
-      body { -webkit-tap-highlight-color: transparent; }
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    </style>
+  <style>
+    body { -webkit-tap-highlight-color: transparent; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
 
-    <!-- ✅ Vite 배포에서는 importmap 제거 (충돌 방지) -->
-  </head>
+<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-slate-50 min-h-screen text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900">
+  <div id="root"></div>
 
-  <body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-slate-50 min-h-screen text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900">
-    <div id="root"></div>
-
-    <!-- ✅ 엔트리: 프로젝트에 맞게 경로 맞추기 -->
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <!-- ✅ 여기만 /index.tsx 로! -->
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>
