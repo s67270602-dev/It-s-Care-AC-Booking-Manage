@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>이끌림잇츠케어 에어컨청소 관리</title>
+
+    <!-- Tailwind: Vite에서 보통은 PostCSS로 빌드하지만, CDN 사용 중이면 유지 가능 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -20,38 +22,21 @@
         }
       }
     </script>
+
     <style>
-      body {
-        -webkit-tap-highlight-color: transparent;
-      }
-      /* Custom scrollbar for table/list areas */
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
+      body { -webkit-tap-highlight-color: transparent; }
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
-  }
-}
-</script>
-</head>
+  </head>
+
   <body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-slate-50 min-h-screen text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900">
     <div id="root"></div>
+
+    <!-- ✅ 핵심: React 엔트리 연결 (아래 경로는 프로젝트에 맞게) -->
+    <!-- 보통 Vite는 /src/main.tsx 또는 /src/main.jsx 를 씁니다 -->
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
