@@ -6,7 +6,7 @@ import BookingList from './components/BookingList';
 import CalendarView from './components/CalendarView';
 import SummaryView from './components/SummaryView';
 import DetailModal from './components/DetailModal';
-import { Download, Upload, Trash2, Plus, ChevronLeft, LogOut, Calendar as CalendarIcon } from 'lucide-react';
+import { Download, LogOut, Calendar as CalendarIcon, Plus, ChevronLeft } from 'lucide-react';
 
 type Tab = 'home' | 'list' | 'settings';
 type Role = 'admin' | 'engineer' | null;
@@ -18,11 +18,16 @@ const App: React.FC = () => {
   const [passwordInput, setPasswordInput] = useState('');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [activeTab, setActiveTab] = useState<Tab>('home');
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [detailBooking, setDetailBooking] = useState<Booking | null>(null);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const ADMIN_PASS = "081607";
   const ENGINEER_PASS = "7672";
 
-  // 1. 서버 데이터 불러오기 (시트 이미지 순서대로 인덱스 수정)
+  // 1. 서버에서 데이터 가져오기 (인덱스 0~17번 매칭)
   useEffect(() => {
     if (!role) return;
     const loadFromServer = async () => {
@@ -30,29 +35,29 @@ const App: React.FC = () => {
       try {
         const response = await fetch(WEB_APP_URL);
         const data = await response.json();
-        const mapped: Booking[] = (data.bookings || []).map((row: any, index: number) => ({
-          id: String(index), // 시트에 ID가 없으므로 순번을 ID로 임시 사용
-          customer: row[0],  // A열: 고객명
-          phone: row[1],     // B열: 연락처
-          address: row[2],   // C열: 주소
-          group: row[3],     // D열: 업종
-          model: row[4],     // E열: 모델
-          type: row[5],      // F열: 종류
-          qty: Number(row[6]), // G열: 대수
-          scope: row[7],     // H열: 범위
-          bookDate: row[8],  // I열: 예약일
-          ampm: row[9].split(' ')[0] || '오전', // J열: 시간(오전/오후 분리)
+        const mapped: Booking[] = (data.bookings || []).map((row: any, idx: number) => ({
+          id: `ac_${idx}_${Date.now()}`,
+          customer: row[0],  // A: 고객명
+          phone: row[1],     // B: 연락처
+          address: row[2],   // C: 주소
+          group: row[3],     // D: 업종
+          model: row[4],     // E: 모델
+          type: row[5],      // F: 종류
+          qty: Number(row[6]) || 1, // G: 대수
+          scope: row[7],     // H: 범위
+          bookDate: row[8],  // I: 예약일
+          ampm: row[9].split(' ')[0] || '오전', // J: 시간
           bookTime: row[9].split(' ')[1] || '',
-          engineer: row[10], // K열: 담당기사
-          contractor: row[11], // L열: 도급업체
-          commissionRate: row[12], // M열: 수수료율
-          priceTotal: row[13], // N열: 총금액
-          paid: row[16],     // Q열: 결제
-          memo: row[17],     // R열: 비고
+          engineer: row[10], // K: 담당기사
+          contractor: row[11], // L: 도급업체
+          commissionRate: row[12], // M: 수수료율
+          priceTotal: row[13], // N: 총금액
+          paid: row[16],     // Q: 결제
+          memo: row[17],     // R: 비고
           createdAt: Date.now()
         }));
         setBookings(mapped);
-      } catch (e) { console.error("데이터 로드 실패", e); }
+      } catch (e) { console.error(e); }
       finally { setIsLoading(false); }
     };
     loadFromServer();
@@ -65,26 +70,24 @@ const App: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput === ADMIN_PASS) { setRole('admin'); }
-    else if (passwordInput === ENGINEER_PASS) { setRole('engineer'); }
-    else { alert("비밀번호 오류"); setPasswordInput(''); }
+    if (passwordInput === ADMIN_PASS) setRole('admin');
+    else if (passwordInput === ENGINEER_PASS) setRole('engineer');
+    else { alert("비밀번호가 틀렸습니다."); setPasswordInput(''); }
   };
 
   const handleLogout = () => { if(window.confirm("로그아웃 하시겠습니까?")) { setRole(null); setPasswordInput(''); } };
 
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
-  const [detailBooking, setDetailBooking] = useState<Booking | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('home');
-  const [showFormModal, setShowFormModal] = useState(false);
-
   useEffect(() => { if (role === 'engineer') setActiveTab('home'); }, [role]);
 
   const handleSave = (data: any) => {
+    const { total, fee, net } = calcFinancials(data); // 정산금액 자동계산
+    const payload = { ...data, fee, net };
+
     if (data.id && bookings.some(b => b.id === data.id)) {
-      setBookings(bookings.map(b => b.id === data.id ? { ...b, ...data } : b));
-      sendToServer({ action: 'UPDATE', ...data });
+      setBookings(bookings.map(b => b.id === data.id ? { ...b, ...payload } : b));
+      sendToServer({ action: 'UPDATE', ...payload });
     } else {
-      const newBooking = { ...data, id: Date.now().toString(), createdAt: Date.now() };
+      const newBooking = { ...payload, id: `ac_${Date.now()}`, createdAt: Date.now() };
       setBookings([...bookings, newBooking]);
       sendToServer({ action: 'ADD', ...newBooking });
     }
@@ -107,23 +110,19 @@ const App: React.FC = () => {
     sendToServer({ action: 'UPDATE', ...booking, paid: newVal });
   };
 
-  const handleEditRequest = (booking: Booking) => {
-    setEditingBooking(booking);
-    setDetailBooking(null);
-    setShowFormModal(true);
-  };
+  const filteredCustomers = useMemo(() => bookings.filter(b => b.customer.includes(searchQuery) || b.phone.includes(searchQuery)).sort((a,b) => (a.bookDate || '9').localeCompare(b.bookDate || '9')), [bookings, searchQuery]);
 
   if (!role) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
         <div className="bg-white w-full max-w-sm rounded-[32px] p-10 shadow-2xl text-center">
           <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center text-white font-black text-2xl mx-auto mb-6 shadow-lg shadow-blue-100">잇</div>
-          <h2 className="text-xl font-black text-slate-800 mb-2">이끌림 잇츠케어</h2>
-          <p className="text-sm text-slate-400 font-bold mb-8">접속 비밀번호를 입력하세요</p>
+          <h2 className="text-xl font-black text-slate-800 mb-2">이끌림 에어컨케어</h2>
+          <p className="text-sm text-slate-400 font-bold mb-8 italic">Clean & Care Solution</p>
           <form onSubmit={handleLogin} className="space-y-4">
-            <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="Password"
-              className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-center font-bold outline-none focus:border-blue-500" autoFocus />
-            <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-100 active:scale-95 transition-all">로그인</button>
+            <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="비밀번호 입력"
+              className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-center font-bold outline-none focus:border-blue-500 transition-all" autoFocus />
+            <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-100 active:scale-95 transition-all">접속하기</button>
           </form>
         </div>
       </div>
@@ -131,82 +130,81 @@ const App: React.FC = () => {
   }
 
   return (
-    <>
-      <div className="lg:hidden bg-slate-50 min-h-screen pb-20 font-sans">
-        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-4 flex justify-between items-center shadow-sm">
-          <h1 className="text-lg font-black text-slate-800 tracking-tight flex items-center gap-2">
-            <span className="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full">It's Care</span>
-            <span>{role === 'admin' ? '에어컨 관리자' : '기사님 스케줄'}</span>
-          </h1>
-          <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-500"><LogOut size={20} /></button>
+    <div className="min-h-screen bg-slate-50 pb-24 sm:pb-12 font-sans">
+      {isLoading && <div className="fixed inset-0 bg-white/80 z-[100] flex items-center justify-center font-black text-blue-600 animate-pulse">데이터 동기화 중...</div>}
+      
+      <header className="bg-white border-b sticky top-0 z-40 px-4 py-4 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg text-white font-black text-xl">잇</div>
+          <div><h1 className="text-xl font-black leading-none">이끌림 에어컨</h1><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Manager Mode</p></div>
         </div>
+        <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><LogOut size={20} /></button>
+      </header>
 
-        {role === 'admin' && (
-          <div className="px-4 py-3 bg-white border-b">
-            <div className="bg-slate-100 p-1 rounded-xl flex text-sm font-bold text-slate-500 shadow-inner">
-              <button onClick={() => setActiveTab('home')} className={`flex-1 py-2.5 rounded-lg ${activeTab === 'home' ? 'bg-white text-blue-600 shadow-sm' : ''}`}>대시보드</button>
-              <button onClick={() => setActiveTab('list')} className={`flex-1 py-2.5 rounded-lg ${activeTab === 'list' ? 'bg-white text-blue-600 shadow-sm' : ''}`}>예약관리</button>
-              <button onClick={() => setActiveTab('settings')} className={`flex-1 py-2.5 rounded-lg ${activeTab === 'settings' ? 'bg-white text-blue-600 shadow-sm' : ''}`}>설정</button>
-            </div>
+      {role === 'admin' && (
+        <div className="max-w-[1920px] mx-auto px-4 mt-6">
+          <div className="flex bg-slate-200/50 p-1 rounded-[22px] w-fit gap-1 shadow-inner">
+            {(['home', 'list', 'settings'] as const).map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-2.5 rounded-[18px] text-sm font-black transition-all ${activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{tab === 'home' ? '대시보드' : tab === 'list' ? '예약목록' : '설정'}</button>
+            ))}
           </div>
-        )}
-
-        <main className="p-4 space-y-4 animate-fade-in">
-          {activeTab === 'home' && (
-            <div className="space-y-4">
-              <CalendarView bookings={bookings} onDetail={setDetailBooking} />
-              {role === 'admin' && <SummaryView bookings={bookings} />}
-              {role === 'engineer' && (
-                <div className="p-5 bg-white border border-slate-100 rounded-3xl shadow-sm">
-                  <p className="text-xs text-slate-500 font-bold flex items-center gap-2 leading-relaxed">
-                    <CalendarIcon size={16} className="text-blue-500" /> 달력에서 날짜를 선택하여 상세 정보를 확인하세요.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'list' && role === 'admin' && (
-            <div className="relative min-h-[70vh]">
-              <BookingList bookings={bookings} onEdit={handleEditRequest} onDelete={handleDelete} onTogglePaid={handleTogglePaid} onDetail={setDetailBooking} />
-              <button onClick={() => { setEditingBooking(null); setShowFormModal(true); }} className="fixed bottom-6 right-5 bg-blue-600 text-white p-4 rounded-full shadow-xl z-40 active:scale-90 transition-transform"><Plus size={28} strokeWidth={3} /></button>
-            </div>
-          )}
-
-          {activeTab === 'settings' && role === 'admin' && (
-             <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 space-y-4">
-                <h3 className="font-bold text-slate-800 mb-2">데이터 관리</h3>
-                <button onClick={() => downloadCSV('에어컨_백업.csv', [], bookings)} className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-slate-600 flex justify-between items-center active:bg-slate-100 transition-colors"><span>CSV 내보내기</span><Download size={18}/></button>
-                <button onClick={() => { if(window.confirm('모든 데이터를 삭제하시겠습니까?')) setBookings([]); }} className="w-full p-4 bg-red-50 text-red-600 rounded-2xl font-bold flex justify-between items-center active:bg-red-100 transition-colors"><span>전체 데이터 삭제</span><Trash2 size={18}/></button>
-             </div>
-          )}
-        </main>
-      </div>
-
-      <div className="hidden lg:block max-w-[1900px] mx-auto p-8 font-sans text-center mt-20">
-         <h2 className="text-2xl font-black text-slate-800">에어컨 관리 프로그램은 모바일 화면에 최적화되어 있습니다.</h2>
-         <p className="text-slate-400 mt-4 font-bold">브라우저 창을 좁히거나 스마트폰으로 접속해 주세요.</p>
-         <button onClick={handleLogout} className="mt-8 px-8 py-3 bg-slate-800 text-white rounded-2xl font-black">로그아웃</button>
-      </div>
-
-      {showFormModal && role === 'admin' && (
-        <div className="fixed inset-0 z-50 bg-white lg:hidden flex flex-col animate-slide-up">
-           <div className="px-4 py-4 border-b border-slate-100 flex items-center gap-3 bg-white sticky top-0 z-10 shadow-sm">
-             <button onClick={() => setShowFormModal(false)} className="p-2 -ml-2 text-slate-400"><ChevronLeft size={28} /></button>
-             <h2 className="text-xl font-black text-slate-800">{editingBooking ? '예약 수정' : '새 예약 추가'}</h2>
-           </div>
-           <div className="flex-1 overflow-y-auto p-4 pb-12"><BookingForm initialData={editingBooking} onSave={handleSave} onCancelEdit={() => setShowFormModal(false)} /></div>
         </div>
       )}
 
+      <main className="max-w-[1920px] mx-auto p-4">
+        {activeTab === 'home' && (
+          <div className="space-y-4">
+            <CalendarView bookings={bookings} onDetail={setDetailBooking} />
+            {role === 'admin' && <SummaryView bookings={bookings} />}
+            {role === 'engineer' && (
+              <div className="p-5 bg-white border border-slate-100 rounded-3xl shadow-sm flex items-center gap-3">
+                <CalendarIcon className="text-blue-500" size={18} />
+                <p className="text-xs text-slate-500 font-bold">날짜 선택 후 하단 목록에서 상세 정보를 확인하세요.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'list' && role === 'admin' && (
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="고객명, 연락처 검색..." className="flex-1 px-5 py-3.5 bg-white border-2 border-slate-100 rounded-2xl text-sm outline-none focus:border-blue-500 shadow-sm" />
+              <button onClick={() => { setEditingBooking(null); setShowFormModal(true); }} className="bg-blue-600 text-white px-6 rounded-2xl font-black shadow-lg shadow-blue-100 active:scale-95">추가</button>
+            </div>
+            <BookingList bookings={bookings} onEdit={(b) => { setEditingBooking(b); setShowFormModal(true); }} onDelete={handleDelete} onTogglePaid={handleTogglePaid} onDetail={setDetailBooking} />
+          </div>
+        )}
+
+        {activeTab === 'settings' && role === 'admin' && (
+           <div className="bg-white rounded-3xl shadow-sm border p-6 space-y-4">
+              <h3 className="font-black text-slate-800 mb-2">데이터 백업</h3>
+              <button onClick={() => downloadCSV('에어컨_백업.csv', [], bookings)} className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-slate-600 flex justify-between items-center active:bg-slate-100"><span>CSV 백업 내보내기</span><Download size={18}/></button>
+           </div>
+        )}
+      </main>
+
+      {/* 상세 정보 모달 */}
       <DetailModal 
         booking={detailBooking} 
         onClose={() => setDetailBooking(null)} 
-        onEdit={role === 'admin' ? handleEditRequest : undefined} 
+        onEdit={role === 'admin' ? (b) => { setEditingBooking(b); setDetailBooking(null); setShowFormModal(true); } : undefined} 
         onDelete={role === 'admin' ? handleDelete : undefined}     
         onTogglePaid={role === 'admin' ? handleTogglePaid : undefined}
       />
-    </>
+
+      {/* 등록/수정 모달 */}
+      {showFormModal && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col animate-slide-up">
+           <div className="px-4 py-4 border-b flex items-center gap-3 bg-white sticky top-0 z-10 shadow-sm">
+             <button onClick={() => setShowFormModal(false)} className="p-2 -ml-2 text-slate-400"><ChevronLeft size={28} /></button>
+             <h2 className="text-xl font-black text-slate-800">{editingBooking ? '예약 수정' : '새 예약 추가'}</h2>
+           </div>
+           <div className="flex-1 overflow-y-auto p-4 pb-12">
+             <BookingForm initialData={editingBooking} onSave={handleSave} onCancelEdit={() => setShowFormModal(false)} />
+           </div>
+        </div>
+      )}
+    </div>
   );
 };
 
