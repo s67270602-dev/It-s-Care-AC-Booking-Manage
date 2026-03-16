@@ -52,6 +52,8 @@ const App: React.FC = () => {
           contractor: row[11], // L: 도급업체
           commissionRate: row[12], // M: 수수료율
           priceTotal: row[13], // N: 총금액
+          fee: row[14],      // O: 수수료 (누락되었던 부분 추가)
+          net: row[15],      // P: 정산액 (누락되었던 부분 추가)
           paid: row[16],     // Q: 결제
           memo: row[17],     // R: 비고
           createdAt: Date.now()
@@ -104,19 +106,27 @@ const App: React.FC = () => {
     }
   };
 
-  // 수정된 부분: 결제 상태 변경 시 detailBooking 상태도 함께 업데이트하여 모달 화면에 즉각 반영
+  // 결제 상태 변경 시 안내문 추가 및 상태 동기화
   const handleTogglePaid = (booking: Booking) => {
-    const newVal = booking.paid === '완료' ? '미완료' : '완료';
+    const isCurrentlyPaid = booking.paid === '완료';
+    const confirmMessage = isCurrentlyPaid 
+      ? '결제 미완료 상태로 변경하시겠습니까?' 
+      : '결제 완료 처리하시겠습니까?';
+      
+    if (!window.confirm(confirmMessage)) return;
+
+    const newVal = isCurrentlyPaid ? '미완료' : '완료';
     const updatedBooking = { ...booking, paid: newVal };
     
     setBookings(bookings.map(b => b.id === booking.id ? updatedBooking : b));
     
-    // 모달에 보여지는 데이터도 업데이트
     if (detailBooking?.id === booking.id) {
       setDetailBooking(updatedBooking);
     }
     
     sendToServer({ action: 'UPDATE', ...updatedBooking });
+    
+    alert(`정상적으로 ${newVal} 처리되었습니다.`);
   };
 
   const filteredCustomers = useMemo(() => bookings.filter(b => b.customer.includes(searchQuery) || b.phone.includes(searchQuery)).sort((a,b) => (a.bookDate || '9').localeCompare(b.bookDate || '9')), [bookings, searchQuery]);
@@ -198,7 +208,6 @@ const App: React.FC = () => {
         onClose={() => setDetailBooking(null)} 
         onEdit={role === 'admin' ? (b) => { setEditingBooking(b); setDetailBooking(null); setShowFormModal(true); } : undefined} 
         onDelete={role === 'admin' ? handleDelete : undefined}     
-        // 기사님도 결제 상태를 바꿀 수 있도록 권한 제한 조건(role === 'admin')을 제거했습니다.
         onTogglePaid={handleTogglePaid}
       />
 
