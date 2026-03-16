@@ -104,10 +104,19 @@ const App: React.FC = () => {
     }
   };
 
+  // 수정된 부분: 결제 상태 변경 시 detailBooking 상태도 함께 업데이트하여 모달 화면에 즉각 반영
   const handleTogglePaid = (booking: Booking) => {
     const newVal = booking.paid === '완료' ? '미완료' : '완료';
-    setBookings(bookings.map(b => b.id === booking.id ? { ...b, paid: newVal } : b));
-    sendToServer({ action: 'UPDATE', ...booking, paid: newVal });
+    const updatedBooking = { ...booking, paid: newVal };
+    
+    setBookings(bookings.map(b => b.id === booking.id ? updatedBooking : b));
+    
+    // 모달에 보여지는 데이터도 업데이트
+    if (detailBooking?.id === booking.id) {
+      setDetailBooking(updatedBooking);
+    }
+    
+    sendToServer({ action: 'UPDATE', ...updatedBooking });
   };
 
   const filteredCustomers = useMemo(() => bookings.filter(b => b.customer.includes(searchQuery) || b.phone.includes(searchQuery)).sort((a,b) => (a.bookDate || '9').localeCompare(b.bookDate || '9')), [bookings, searchQuery]);
@@ -189,7 +198,8 @@ const App: React.FC = () => {
         onClose={() => setDetailBooking(null)} 
         onEdit={role === 'admin' ? (b) => { setEditingBooking(b); setDetailBooking(null); setShowFormModal(true); } : undefined} 
         onDelete={role === 'admin' ? handleDelete : undefined}     
-        onTogglePaid={role === 'admin' ? handleTogglePaid : undefined}
+        // 기사님도 결제 상태를 바꿀 수 있도록 권한 제한 조건(role === 'admin')을 제거했습니다.
+        onTogglePaid={handleTogglePaid}
       />
 
       {/* 등록/수정 모달 */}
