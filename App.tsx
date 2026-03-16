@@ -13,6 +13,13 @@ type Role = 'admin' | 'engineer' | null;
 
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz2Q6UXI_zu3qv4oy9CljlDYRnIA6-OqKHMUgpW6ZqXFuhZsIiIQpkbwBglzTiwFudJ/exec";
 
+// 금액 계산 시 콤마 등 문자열이 섞여 있어도 안전하게 숫자로 변환해주는 함수
+const parseNum = (val: any) => {
+  if (!val) return 0;
+  if (typeof val === 'number') return val;
+  return Number(String(val).replace(/[^0-9.-]+/g, "")) || 0;
+};
+
 const App: React.FC = () => {
   const [role, setRole] = useState<Role>(null);
   const [passwordInput, setPasswordInput] = useState('');
@@ -27,7 +34,7 @@ const App: React.FC = () => {
   const ADMIN_PASS = "081607";
   const ENGINEER_PASS = "7672";
 
-  // 1. 서버에서 데이터 가져오기 (인덱스 0~17번 매칭)
+  // 1. 서버에서 데이터 가져오기
   useEffect(() => {
     if (!role) return;
     const loadFromServer = async () => {
@@ -35,29 +42,40 @@ const App: React.FC = () => {
       try {
         const response = await fetch(WEB_APP_URL);
         const data = await response.json();
-        const mapped: Booking[] = (data.bookings || []).map((row: any, idx: number) => ({
-          id: `ac_${idx}_${Date.now()}`,
-          customer: row[0],  // A: 고객명
-          phone: row[1],     // B: 연락처
-          address: row[2],   // C: 주소
-          group: row[3],     // D: 업종
-          model: row[4],     // E: 모델
-          type: row[5],      // F: 종류
-          qty: Number(row[6]) || 1, // G: 대수
-          scope: row[7],     // H: 범위
-          bookDate: row[8],  // I: 예약일
-          ampm: row[9].split(' ')[0] || '오전', // J: 시간
-          bookTime: row[9].split(' ')[1] || '',
-          engineer: row[10], // K: 담당기사
-          contractor: row[11], // L: 도급업체
-          commissionRate: row[12], // M: 수수료율
-          priceTotal: row[13], // N: 총금액
-          fee: row[14],      // O: 수수료 (누락되었던 부분 추가)
-          net: row[15],      // P: 정산액 (누락되었던 부분 추가)
-          paid: row[16],     // Q: 결제
-          memo: row[17],     // R: 비고
-          createdAt: Date.now()
-        }));
+        const mapped: Booking[] = (data.bookings || []).map((row: any, idx: number) => {
+          
+          const price = parseNum(row[13]);
+          const rawFee = parseNum(row[14]);
+          const rawNet = parseNum(row[15]);
+          
+          // 수수료율이 없어 정산액이 0인 경우, 기본적으로 총금액을 정산액으로 보정
+          const fee = rawFee;
+          const net = (rawNet === 0 && price > 0) ? price - fee : rawNet;
+
+          return {
+            id: `ac_${idx}_${Date.now()}`,
+            customer: row[0] || '',
+            phone: row[1] || '',
+            address: row[2] || '',
+            group: row[3] || '',
+            model: row[4] || '',
+            type: row[5] || '',
+            qty: Number(row[6]) || 1,
+            scope: row[7] || '',
+            bookDate: row[8] || '',
+            ampm: (row[9] || '').split(' ')[0] || '오전',
+            bookTime: (row[9] || '').split(' ')[1] || '',
+            engineer: row[10] || '',
+            contractor: row[11] || '',
+            commissionRate: row[12] || '',
+            priceTotal: row[13] || '',
+            fee: fee,
+            net: net,
+            paid: row[16] || '',
+            memo: row[17] || '',
+            createdAt: Date.now()
+          };
+        });
         setBookings(mapped);
       } catch (e) { console.error(e); }
       finally { setIsLoading(false); }
@@ -83,7 +101,16 @@ const App: React.FC = () => {
 
   const handleSave = (data: any) => {
     const { total, fee, net } = calcFinancials(data); // 정산금액 자동계산
-    const payload = { ...data, fee, net };
+    
+    let finalFee = fee || 0;
+    let finalNet = net || 0;
+
+    // 수수료율 미입력 등으로 정산액이 0일 경우, 총금액으로 보정
+    if (finalNet === 0 && parseNum(data.priceTotal) > 0) {
+        finalNet = parseNum(data.priceTotal) - finalFee;
+    }
+
+    const payload = { ...data, fee: finalFee, net: finalNet };
 
     if (data.id && bookings.some(b => b.id === data.id)) {
       setBookings(bookings.map(b => b.id === data.id ? { ...b, ...payload } : b));
@@ -106,7 +133,7 @@ const App: React.FC = () => {
     }
   };
 
-  // 결제 상태 변경 시 안내문 추가 및 상태 동기화
+  // 결제 상태 변경 시
   const handleTogglePaid = (booking: Booking) => {
     const isCurrentlyPaid = booking.paid === '완료';
     const confirmMessage = isCurrentlyPaid 
@@ -116,7 +143,22 @@ const App: React.FC = () => {
     if (!window.confirm(confirmMessage)) return;
 
     const newVal = isCurrentlyPaid ? '미완료' : '완료';
-    const updatedBooking = { ...booking, paid: newVal };
+    
+    // 결제 처리 시에도 정산액이 누락되어있다면 보정 계산 진행
+    const { fee, net } = calcFinancials(booking);
+    let finalFee = fee !== undefined ? fee : parseNum(booking.fee);
+    let finalNet = net !== undefined ? net : parseNum(booking.net);
+    
+    if (!finalNet && parseNum(booking.priceTotal) > 0) {
+        finalNet = parseNum(booking.priceTotal) - finalFee;
+    }
+
+    const updatedBooking = { 
+        ...booking, 
+        paid: newVal, 
+        fee: finalFee, 
+        net: finalNet 
+    };
     
     setBookings(bookings.map(b => b.id === booking.id ? updatedBooking : b));
     
