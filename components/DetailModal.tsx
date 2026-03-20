@@ -16,11 +16,22 @@ const DetailModal: React.FC<Props> = ({ booking, onClose, onEdit, onDelete, onTo
 
   const { total, fee, net, rate } = calcFinancials(booking);
   
+  // 24시간제 시간을 12시간제로 변환하는 함수 추가
+  const formatTime12 = (timeStr?: string) => {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':');
+    if (!h || !m) return timeStr;
+    let hour = parseInt(h, 10);
+    if (hour > 12) hour -= 12;
+    else if (hour === 0) hour = 12;
+    return `${hour}:${m}`;
+  };
+  
   const handleSms = () => {
     const tpl = loadSmsTemplate();
     const body = `[예약 정보]
 고객: ${booking.customer}
-일정: ${booking.bookDate} (${booking.ampm} ${booking.bookTime || ''})
+일정: ${booking.bookDate} (${booking.ampm} ${formatTime12(booking.bookTime)})
 주소: ${booking.address}
 
 ${tpl}`;
@@ -66,7 +77,7 @@ ${tpl}`;
         {/* Body */}
         <div className="p-5 overflow-y-auto">
           <div className="grid grid-cols-2 gap-3 mb-6">
-            <InfoRow label="예약일시" value={`${booking.bookDate} ${booking.ampm} ${booking.bookTime || ''}`} highlight />
+            <InfoRow label="예약일시" value={`${booking.bookDate} ${booking.ampm} ${formatTime12(booking.bookTime)}`} highlight />
             <InfoRow label="결제상태" value={booking.paid} highlight={booking.paid === '완료'} />
             <InfoRow label="연락처" value={booking.phone} />
             
