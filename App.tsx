@@ -216,7 +216,8 @@ const App: React.FC = () => {
         {activeTab === 'home' && (
           <div className="space-y-4">
             <CalendarView bookings={bookings} onDetail={setDetailBooking} />
-            {role === 'admin' && <SummaryView bookings={bookings} />}
+            {/* 요약 뷰에 전달되는 데이터를 '완료' 건으로만 필터링하도록 수정됨 */}
+            {role === 'admin' && <SummaryView bookings={bookings.filter(b => b.paid === '완료')} />}
             {role === 'engineer' && (
               <div className="p-5 bg-white border border-slate-100 rounded-3xl shadow-sm flex items-center gap-3">
                 <CalendarIcon className="text-blue-500" size={18} />
