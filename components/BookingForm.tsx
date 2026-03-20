@@ -105,6 +105,12 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
         else if (value === '자체건') updated.commissionRate = '0';
         else updated.commissionRate = ''; // Unknown for others
       }
+
+      // 시간 입력 시 24시간 기준으로 오전/오후 자동 계산하여 ampm 상태 업데이트
+      if (field === 'bookTime' && finalValue) {
+        const hour = parseInt(finalValue.split(':')[0], 10);
+        updated.ampm = hour >= 12 ? '오후' : '오전';
+      }
       
       return updated;
     });
@@ -300,22 +306,12 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
 
           <div className="flex flex-col gap-1.5 md:col-span-2">
             <label className={labelClass}>예약 시간</label>
-            <div className="flex gap-2">
-              <select
-                value={formData.ampm}
-                onChange={e => handleChange('ampm', e.target.value)}
-                className={`${selectClass} w-28`}
-              >
-                <option value="오전">오전</option>
-                <option value="오후">오후</option>
-              </select>
-              <input
-                type="time"
-                value={formData.bookTime}
-                onChange={e => handleChange('bookTime', e.target.value)}
-                className={`${inputClass} flex-1`}
-              />
-            </div>
+            <input
+              type="time"
+              value={formData.bookTime}
+              onChange={e => handleChange('bookTime', e.target.value)}
+              className={inputClass}
+            />
           </div>
 
           {/* 추가된 기사 1 입력 */}
