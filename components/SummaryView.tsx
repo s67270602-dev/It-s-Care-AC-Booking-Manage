@@ -7,6 +7,13 @@ interface Props {
   bookings: Booking[];
 }
 
+// 콤마 등 문자열이 섞인 금액을 숫자로 안전하게 변환
+const parseNum = (val: any) => {
+  if (!val) return 0;
+  if (typeof val === 'number') return val;
+  return Number(String(val).replace(/[^0-9.-]+/g, "")) || 0;
+};
+
 const SummaryView: React.FC<Props> = ({ bookings }) => {
   const [monthStr, setMonthStr] = useState(() => {
     const now = new Date();
@@ -48,6 +55,7 @@ const SummaryView: React.FC<Props> = ({ bookings }) => {
       
       const { total, fee, net } = calcFinancials(b);
       
+      // 전체 통계
       stats.count++;
       stats.sales += total;
       if (fee !== null && net !== null) {
@@ -57,20 +65,45 @@ const SummaryView: React.FC<Props> = ({ bookings }) => {
         stats.unknown++;
       }
 
-      // Grouping
+      // 업체별 통계
       const cKey = b.contractor || '미지정';
-      const eKey = b.engineer || '미지정';
-      
-      [getOrInit(contractorMap, cKey), getOrInit(engineerMap, eKey)].forEach(obj => {
-        obj.count++;
-        obj.sales += total;
+      const cObj = getOrInit(contractorMap, cKey);
+      cObj.count++;
+      cObj.sales += total;
+      if (fee !== null && net !== null) {
+        cObj.fee += fee;
+        cObj.net += net;
+      } else {
+        cObj.unknown++;
+      }
+
+      // 기사 1, 기사 2 정산액 추출
+      const amt1 = parseNum(b.engineerAmount);
+      const amt2 = parseNum(b.engineer2Amount);
+      const hasExplicitAmounts = amt1 > 0 || amt2 > 0;
+
+      // 기사 1 통계
+      const e1Key = b.engineer || '미지정';
+      const e1Obj = getOrInit(engineerMap, e1Key);
+      e1Obj.count++;
+      e1Obj.sales += total;
+      if (fee !== null && net !== null) {
+        e1Obj.fee += fee;
+        // 개별 금액이 적혀있으면 그 금액을, 없으면 전체 정산액(net)을 기사 1에게 배정
+        e1Obj.net += hasExplicitAmounts ? amt1 : net;
+      } else {
+        e1Obj.unknown++;
+      }
+
+      // 기사 2 통계 (기사 2 이름이 입력된 경우에만)
+      if (b.engineer2) {
+        const e2Obj = getOrInit(engineerMap, b.engineer2);
+        e2Obj.count++; // 참여 건수 추가
+        // 총매출이나 수수료를 중복 합산하면 통계가 부풀려지므로 정산액만 추가
         if (fee !== null && net !== null) {
-          obj.fee += fee;
-          obj.net += net;
-        } else {
-          obj.unknown++;
+          e2Obj.net += amt2;
         }
-      });
+      }
     });
 
     return { 
