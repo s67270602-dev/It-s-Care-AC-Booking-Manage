@@ -110,20 +110,32 @@ const App: React.FC = () => {
         finalNet = parseNum(data.priceTotal) - finalFee;
     }
 
-    // --- 시간 포맷 변환 로직 추가 (14:00 -> 2:00) ---
-    let formattedTime = data.bookTime;
-    if (formattedTime && typeof formattedTime === 'string' && formattedTime.includes(':')) {
-      let [hours, minutes] = formattedTime.split(':');
-      let h = parseInt(hours, 10);
-      if (!isNaN(h)) {
-        if (h > 12) h -= 12;
-        else if (h === 0) h = 12;
-        formattedTime = `${h}:${minutes}`; // 앞의 0을 제거하고 12시간제로 변경
+    // --- 강력한 시간 포맷 & 오전/오후 변환 로직 추가 ---
+    let formattedTime = data.bookTime ? String(data.bookTime).trim() : "";
+    let formattedAmPm = data.ampm ? String(data.ampm).trim() : "오전";
+
+    if (formattedTime.includes(':')) {
+      let [hoursStr, minutes] = formattedTime.split(':');
+      let hours = parseInt(hoursStr, 10);
+      
+      if (!isNaN(hours)) {
+        if (hours > 12) {
+          formattedAmPm = '오후';
+          hours -= 12;
+        } else if (hours === 12) {
+          formattedAmPm = '오후';
+        } else if (hours === 0) {
+          formattedAmPm = '오전';
+          hours = 12;
+        } else {
+          formattedAmPm = data.ampm || '오전';
+        }
+        formattedTime = `${hours}:${minutes}`;
       }
     }
     // ------------------------------------------------
 
-    const payload = { ...data, bookTime: formattedTime, fee: finalFee, net: finalNet };
+    const payload = { ...data, bookTime: formattedTime, ampm: formattedAmPm, fee: finalFee, net: finalNet };
 
     if (data.id && bookings.some(b => b.id === data.id)) {
       setBookings(bookings.map(b => b.id === data.id ? { ...b, ...payload } : b));
