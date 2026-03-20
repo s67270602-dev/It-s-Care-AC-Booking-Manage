@@ -110,7 +110,20 @@ const App: React.FC = () => {
         finalNet = parseNum(data.priceTotal) - finalFee;
     }
 
-    const payload = { ...data, fee: finalFee, net: finalNet };
+    // --- 시간 포맷 변환 로직 추가 (14:00 -> 2:00) ---
+    let formattedTime = data.bookTime;
+    if (formattedTime && typeof formattedTime === 'string' && formattedTime.includes(':')) {
+      let [hours, minutes] = formattedTime.split(':');
+      let h = parseInt(hours, 10);
+      if (!isNaN(h)) {
+        if (h > 12) h -= 12;
+        else if (h === 0) h = 12;
+        formattedTime = `${h}:${minutes}`; // 앞의 0을 제거하고 12시간제로 변경
+      }
+    }
+    // ------------------------------------------------
+
+    const payload = { ...data, bookTime: formattedTime, fee: finalFee, net: finalNet };
 
     if (data.id && bookings.some(b => b.id === data.id)) {
       setBookings(bookings.map(b => b.id === data.id ? { ...b, ...payload } : b));
@@ -250,7 +263,7 @@ const App: React.FC = () => {
         booking={detailBooking} 
         onClose={() => setDetailBooking(null)} 
         onEdit={role === 'admin' ? (b) => { setEditingBooking(b); setDetailBooking(null); setShowFormModal(true); } : undefined} 
-        onDelete={role === 'admin' ? handleDelete : undefined}     
+        onDelete={role === 'admin' ? handleDelete : undefined}      
         onTogglePaid={handleTogglePaid}
       />
 
