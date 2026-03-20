@@ -1,7 +1,7 @@
 import React from 'react';
 import { Booking } from '../types';
 import { calcFinancials, formatMoney, loadSmsTemplate, DEFAULT_SMS_TEMPLATE } from '../services/utils';
-import { X, Phone, MessageCircle, Edit, Trash, CreditCard, CheckCircle } from 'lucide-react';
+import { X, Phone, MessageCircle, Edit, Trash, CreditCard, CheckCircle, MapPin } from 'lucide-react';
 
 interface Props {
   booking: Booking | null;
@@ -33,6 +33,14 @@ ${tpl}`;
     window.location.href = `sms:${booking.phone}${separator}body=${encodeURIComponent(body)}`;
   };
 
+  // T맵 실행 함수 추가
+  const handleTmap = (address: string) => {
+    if (!address) return;
+    // T맵 검색결과로 바로 이동하는 URL 스킴
+    const tmapUrl = `tmap://search?name=${encodeURIComponent(address)}`;
+    window.location.href = tmapUrl;
+  };
+
   const InfoRow = ({ label, value, highlight = false }: any) => (
     <div className="flex flex-col gap-0.5 p-3 bg-slate-50 rounded-lg border border-slate-100">
       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
@@ -61,7 +69,20 @@ ${tpl}`;
             <InfoRow label="예약일시" value={`${booking.bookDate} ${booking.ampm} ${booking.bookTime || ''}`} highlight />
             <InfoRow label="결제상태" value={booking.paid} highlight={booking.paid === '완료'} />
             <InfoRow label="연락처" value={booking.phone} />
-            <InfoRow label="주소" value={booking.address} />
+            
+            {/* T맵 연동 클릭 버튼으로 변경된 주소 부분 */}
+            <div 
+              onClick={() => handleTmap(booking.address)}
+              className="flex flex-col gap-0.5 p-3 bg-blue-50/50 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors active:scale-95 group"
+              title="T맵으로 길찾기"
+            >
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">주소 (T맵 실행)</span>
+                <MapPin size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <span className="text-sm font-bold text-blue-700 break-all underline underline-offset-2">{booking.address || '-'}</span>
+            </div>
+
             <InfoRow label="모델/종류" value={`${booking.model || '-'} / ${booking.type}`} />
             <InfoRow label="대수/범위" value={`${booking.qty}대 / ${booking.scope}`} />
             <InfoRow label="총금액" value={formatMoney(total)} />
