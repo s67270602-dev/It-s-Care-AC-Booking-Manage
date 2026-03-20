@@ -66,8 +66,19 @@ ${tpl}`;
             <InfoRow label="대수/범위" value={`${booking.qty}대 / ${booking.scope}`} />
             <InfoRow label="총금액" value={formatMoney(total)} />
             <InfoRow label="결제방식" value={booking.payMethod} />
-            <InfoRow label="업체/기사" value={`${booking.contractor} / ${booking.engineer || '-'}`} />
-            <InfoRow label="정산(수수료)" value={`${net !== null ? formatMoney(net) : '미확정'} (${rate ?? '?'}%)`} highlight />
+            
+            {/* 기사 1 정보 */}
+            <InfoRow label="업체 / 기사 1" value={`${booking.contractor} / ${booking.engineer || '-'}`} />
+            <InfoRow label="기사 1 정산액" value={booking.engineerAmount ? `${booking.engineerAmount}원` : (net !== null ? `${formatMoney(net)} (${rate ?? '?'}%)` : '미확정')} highlight />
+            
+            {/* 기사 2 정보 (입력된 경우에만 표시) */}
+            {booking.engineer2 && (
+              <>
+                <InfoRow label="기사 2" value={booking.engineer2} />
+                <InfoRow label="기사 2 정산액" value={booking.engineer2Amount ? `${booking.engineer2Amount}원` : '-'} highlight />
+              </>
+            )}
+
             <div className="col-span-2">
               <InfoRow label="비고" value={booking.memo} />
             </div>
