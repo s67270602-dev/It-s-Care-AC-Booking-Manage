@@ -23,6 +23,9 @@ const emptyFormState = {
   bookTime: '',
   ampm: '오전' as '오전' | '오후',
   engineer: '',
+  engineerAmount: '',
+  engineer2: '',
+  engineer2Amount: '',
   contractor: '자체건',
   commissionRate: '0',
   payMethod: '카드',
@@ -49,7 +52,10 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
         bookDate: initialData.bookDate,
         bookTime: initialData.bookTime,
         ampm: initialData.ampm,
-        engineer: initialData.engineer,
+        engineer: initialData.engineer || '',
+        engineerAmount: initialData.engineerAmount || '',
+        engineer2: initialData.engineer2 || '',
+        engineer2Amount: initialData.engineer2Amount || '',
         contractor: initialData.contractor,
         commissionRate: initialData.commissionRate,
         payMethod: initialData.payMethod,
@@ -86,7 +92,7 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
       finalValue = formatPhone(value);
     }
     // Auto-format Currency
-    if (field === 'priceTotal') {
+    if (field === 'priceTotal' || field === 'engineerAmount' || field === 'engineer2Amount') {
       finalValue = formatCurrency(value);
     }
 
@@ -292,7 +298,7 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 md:col-span-2">
             <label className={labelClass}>예약 시간</label>
             <div className="flex gap-2">
               <select
@@ -312,12 +318,48 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
             </div>
           </div>
 
+          {/* 추가된 기사 1 입력 */}
           <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>담당 기사</label>
+            <label className={labelClass}>담당 기사 1</label>
             <input
               value={formData.engineer}
               onChange={e => handleChange('engineer', e.target.value)}
               placeholder="예) 김기사"
+              className={inputClass}
+            />
+          </div>
+
+          {/* 추가된 기사 1 정산액 입력 */}
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>기사 1 정산액</label>
+            <input
+              value={formData.engineerAmount}
+              onChange={e => handleChange('engineerAmount', e.target.value)}
+              placeholder="예) 100,000 (숫자만)"
+              inputMode="numeric"
+              className={inputClass}
+            />
+          </div>
+
+          {/* 추가된 기사 2 입력 */}
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>담당 기사 2 (선택)</label>
+            <input
+              value={formData.engineer2}
+              onChange={e => handleChange('engineer2', e.target.value)}
+              placeholder="예) 박기사"
+              className={inputClass}
+            />
+          </div>
+
+          {/* 추가된 기사 2 정산액 입력 */}
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>기사 2 정산액 (선택)</label>
+            <input
+              value={formData.engineer2Amount}
+              onChange={e => handleChange('engineer2Amount', e.target.value)}
+              placeholder="예) 80,000 (숫자만)"
+              inputMode="numeric"
               className={inputClass}
             />
           </div>
