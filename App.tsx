@@ -73,6 +73,8 @@ const App: React.FC = () => {
             net: net,
             paid: row[16] || '',
             memo: row[17] || '',
+            signatureUrl: row[18] || '', // 새로 추가된 서명 링크 (S열)
+            isDisagree: row[19] === '미동의', // 새로 추가된 동의 여부 (T열)
             createdAt: Date.now()
           };
         });
