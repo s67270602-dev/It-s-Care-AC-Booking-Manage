@@ -102,8 +102,9 @@ const App: React.FC = () => {
   const handleSave = (data: any) => {
     const { total, fee, net } = calcFinancials(data); // 정산금액 자동계산
     
-    let finalFee = fee || 0;
-    let finalNet = net || 0;
+    // 수정 시 기존 입력된 금액이 지워지지 않도록 data에 있는 값을 우선적으로 사용 (없을 때만 자동계산 값 반영)
+    let finalFee = (data.fee !== undefined && data.fee !== null && data.fee !== '') ? parseNum(data.fee) : (fee || 0);
+    let finalNet = (data.net !== undefined && data.net !== null && data.net !== '') ? parseNum(data.net) : (net || 0);
 
     // 수수료율 미입력 등으로 정산액이 0일 경우, 총금액으로 보정
     if (finalNet === 0 && parseNum(data.priceTotal) > 0) {
@@ -169,10 +170,9 @@ const App: React.FC = () => {
 
     const newVal = isCurrentlyPaid ? '미완료' : '완료';
     
-    // 결제 처리 시에도 정산액이 누락되어있다면 보정 계산 진행
-    const { fee, net } = calcFinancials(booking);
-    let finalFee = fee !== undefined ? fee : parseNum(booking.fee);
-    let finalNet = net !== undefined ? net : parseNum(booking.net);
+    // 결제 상태 변경 시에도 정산액이 초기화/누락되지 않도록 기존 값을 최우선 유지
+    let finalFee = parseNum(booking.fee);
+    let finalNet = parseNum(booking.net);
     
     if (!finalNet && parseNum(booking.priceTotal) > 0) {
         finalNet = parseNum(booking.priceTotal) - finalFee;
