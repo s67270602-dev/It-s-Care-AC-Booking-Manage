@@ -13,7 +13,6 @@ type Role = 'admin' | 'engineer' | null;
 
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxY893O6AN73Ru5BbTJzJciqBSJ_Lf0AgQBveI5XHCgwxsA--tIj1cfs9wz0o3M_xPP/exec";
 
-// 금액 계산 시 콤마 등 문자열이 섞여 있어도 안전하게 숫자로 변환해주는 함수
 const parseNum = (val: any) => {
   if (!val) return 0;
   if (typeof val === 'number') return val;
@@ -34,7 +33,7 @@ const App: React.FC = () => {
   const ADMIN_PASS = "081607";
   const ENGINEER_PASS = "7672";
 
-  // 1. 서버에서 데이터 가져오기
+  // 1. 서버에서 데이터 가져오기 (기사 2 데이터 매핑 추가)
   useEffect(() => {
     if (!role) return;
     const loadFromServer = async () => {
@@ -46,11 +45,14 @@ const App: React.FC = () => {
           
           const price = parseNum(row[13]);
           const rawFee = parseNum(row[14]);
-          const rawNet = parseNum(row[15]);
+          const rawNet1 = parseNum(row[15]); // 기사 1 정산액
+          const rawNet2 = parseNum(row[21]); // 기사 2 정산액 (U열 이후 가정)
           
-          // 수수료율이 없어 정산액이 0인 경우, 기본적으로 총금액을 정산액으로 보정
-          const fee = rawFee;
-          const net = (rawNet === 0 && price > 0) ? price - fee : rawNet;
+          // 수수료율이 없어 정산액이 0인 경우에만 보정하되, 기사 2 정산액이 있다면 합산되지 않도록 유지
+          let net1 = rawNet1;
+          if (net1 === 0 && rawNet2 === 0 && price > 0) {
+            net1 = price - rawFee;
+          }
 
           return {
             id: `ac_${idx}_${Date.now()}`,
@@ -69,12 +71,14 @@ const App: React.FC = () => {
             contractor: row[11] || '',
             commissionRate: row[12] || '',
             priceTotal: row[13] || '',
-            fee: fee,
-            net: net,
+            fee: rawFee,
+            net: net1,
+            engineer2: row[20] || '', // 기사 2 이름
+            net2: rawNet2,            // 기사 2 정산액
             paid: row[16] || '',
             memo: row[17] || '',
-            signatureUrl: row[18] || '', // 새로 추가된 서명 링크 (S열)
-            isDisagree: row[19] === '미동의', // 새로 추가된 동의 여부 (T열)
+            signatureUrl: row[18] || '', 
+            isDisagree: row[19] === '미동의', 
             createdAt: Date.now()
           };
         });
@@ -102,43 +106,40 @@ const App: React.FC = () => {
   useEffect(() => { if (role === 'engineer') setActiveTab('home'); }, [role]);
 
   const handleSave = (data: any) => {
-    const { total, fee, net } = calcFinancials(data); // 정산금액 자동계산
+    const { total, fee, net } = calcFinancials(data); 
     
-    // 수정 시 기존 입력된 금액이 지워지지 않도록 data에 있는 값을 우선적으로 사용 (없을 때만 자동계산 값 반영)
-    let finalFee = (data.fee !== undefined && data.fee !== null && data.fee !== '') ? parseNum(data.fee) : (fee || 0);
-    let finalNet = (data.net !== undefined && data.net !== null && data.net !== '') ? parseNum(data.net) : (net || 0);
+    // 기사 1 정산액 결정 (수동 입력값 우선)
+    let finalNet1 = (data.net !== undefined && data.net !== null && data.net !== '') ? parseNum(data.net) : (net || 0);
+    // 기사 2 정산액 결정 (수동 입력값 우선)
+    let finalNet2 = (data.net2 !== undefined && data.net2 !== null && data.net2 !== '') ? parseNum(data.net2) : 0;
 
-    // 수수료율 미입력 등으로 정산액이 0일 경우, 총금액으로 보정
-    if (finalNet === 0 && parseNum(data.priceTotal) > 0) {
-        finalNet = parseNum(data.priceTotal) - finalFee;
+    // 보정 로직: 둘 다 0일 때만 총액에서 수수료 뺀 값을 기사 1에게 할당
+    if (finalNet1 === 0 && finalNet2 === 0 && parseNum(data.priceTotal) > 0) {
+        finalNet1 = parseNum(data.priceTotal) - parseNum(data.fee || fee);
     }
 
-    // --- 강력한 시간 포맷 & 오전/오후 변환 로직 추가 ---
     let formattedTime = data.bookTime ? String(data.bookTime).trim() : "";
     let formattedAmPm = data.ampm ? String(data.ampm).trim() : "오전";
 
     if (formattedTime.includes(':')) {
       let [hoursStr, minutes] = formattedTime.split(':');
       let hours = parseInt(hoursStr, 10);
-      
       if (!isNaN(hours)) {
-        if (hours > 12) {
-          formattedAmPm = '오후';
-          hours -= 12;
-        } else if (hours === 12) {
-          formattedAmPm = '오후';
-        } else if (hours === 0) {
-          formattedAmPm = '오전';
-          hours = 12;
-        } else {
-          formattedAmPm = data.ampm || '오전';
-        }
+        if (hours > 12) { formattedAmPm = '오후'; hours -= 12; }
+        else if (hours === 12) { formattedAmPm = '오후'; }
+        else if (hours === 0) { formattedAmPm = '오전'; hours = 12; }
+        else { formattedAmPm = data.ampm || '오전'; }
         formattedTime = `${hours}:${minutes}`;
       }
     }
-    // ------------------------------------------------
 
-    const payload = { ...data, bookTime: formattedTime, ampm: formattedAmPm, fee: finalFee, net: finalNet };
+    const payload = { 
+      ...data, 
+      bookTime: formattedTime, 
+      ampm: formattedAmPm, 
+      net: finalNet1, 
+      net2: finalNet2 
+    };
 
     if (data.id && bookings.some(b => b.id === data.id)) {
       setBookings(bookings.map(b => b.id === data.id ? { ...b, ...payload } : b));
@@ -161,40 +162,26 @@ const App: React.FC = () => {
     }
   };
 
-  // 결제 상태 변경 시
   const handleTogglePaid = (booking: Booking) => {
     const isCurrentlyPaid = booking.paid === '완료';
-    const confirmMessage = isCurrentlyPaid 
-      ? '결제 미완료 상태로 변경하시겠습니까?' 
-      : '결제 완료 처리하시겠습니까?';
-      
+    const confirmMessage = isCurrentlyPaid ? '결제 미완료 상태로 변경하시겠습니까?' : '결제 완료 처리하시겠습니까?';
     if (!window.confirm(confirmMessage)) return;
 
     const newVal = isCurrentlyPaid ? '미완료' : '완료';
     
-    // 결제 상태 변경 시에도 정산액이 초기화/누락되지 않도록 기존 값을 최우선 유지
-    let finalFee = parseNum(booking.fee);
-    let finalNet = parseNum(booking.net);
-    
-    if (!finalNet && parseNum(booking.priceTotal) > 0) {
-        finalNet = parseNum(booking.priceTotal) - finalFee;
-    }
-
+    // 상태 변경 시 기존에 분리되어 있던 정산액들(net, net2)을 그대로 유지
     const updatedBooking = { 
         ...booking, 
-        paid: newVal, 
-        fee: finalFee, 
-        net: finalNet 
+        paid: newVal,
+        net: parseNum(booking.net),
+        net2: parseNum(booking.net2)
     };
     
     setBookings(bookings.map(b => b.id === booking.id ? updatedBooking : b));
-    
     if (detailBooking?.id === booking.id) {
       setDetailBooking(updatedBooking);
     }
-    
     sendToServer({ action: 'UPDATE', ...updatedBooking });
-    
     alert(`정상적으로 ${newVal} 처리되었습니다.`);
   };
 
@@ -243,7 +230,6 @@ const App: React.FC = () => {
         {activeTab === 'home' && (
           <div className="space-y-4">
             <CalendarView bookings={bookings} onDetail={setDetailBooking} />
-            {/* 요약 뷰에 전달되는 데이터를 '완료' 건으로만 필터링하도록 수정됨 */}
             {role === 'admin' && <SummaryView bookings={bookings.filter(b => b.paid === '완료')} />}
             {role === 'engineer' && (
               <div className="p-5 bg-white border border-slate-100 rounded-3xl shadow-sm flex items-center gap-3">
@@ -272,7 +258,6 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* 상세 정보 모달 */}
       <DetailModal 
         booking={detailBooking} 
         onClose={() => setDetailBooking(null)} 
@@ -281,7 +266,6 @@ const App: React.FC = () => {
         onTogglePaid={handleTogglePaid}
       />
 
-      {/* 등록/수정 모달 */}
       {showFormModal && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col animate-slide-up">
            <div className="px-4 py-4 border-b flex items-center gap-3 bg-white sticky top-0 z-10 shadow-sm">
