@@ -1,7 +1,7 @@
 import React from 'react';
 import { Booking } from '../types';
 import { calcFinancials, formatMoney, loadSmsTemplate, DEFAULT_SMS_TEMPLATE } from '../services/utils';
-import { X, Phone, MessageCircle, Edit, Trash, CreditCard, CheckCircle, MapPin } from 'lucide-react';
+import { X, Phone, MessageCircle, Edit, Trash, CreditCard, CheckCircle, MapPin, FileSignature } from 'lucide-react';
 
 interface Props {
   booking: Booking | null;
@@ -126,6 +126,19 @@ ${tpl}`;
              <button onClick={() => onTogglePaid(booking)} className={`col-span-2 py-3 rounded-xl font-bold border transition-colors flex items-center justify-center gap-2 ${booking.paid === '완료' ? 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
                {booking.paid === '완료' ? <><CreditCard size={18} /> 미수금으로 변경</> : <><CheckCircle size={18} /> 결제완료 처리</>}
              </button>
+             
+             {/* 추가된 버튼: 세척 동의서 서명 확인 (서명 링크가 있을 때만 렌더링) */}
+             {booking.signatureUrl && (
+               <a 
+                 href={booking.signatureUrl} 
+                 target="_blank" 
+                 rel="noopener noreferrer" 
+                 className="col-span-2 py-3 mt-1 rounded-xl font-bold border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
+               >
+                 <FileSignature size={18} /> 
+                 {booking.isDisagree ? '세척 미동의서 보기' : '세척 동의 서명 보기'}
+               </a>
+             )}
           </div>
 
           <div className="flex gap-4 mt-4 pt-4 border-t border-slate-100 justify-end">
