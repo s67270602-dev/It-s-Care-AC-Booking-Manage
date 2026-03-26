@@ -91,17 +91,26 @@ const App: React.FC = () => {
   const handleSave = (data: any) => {
     const { fee: calcFee } = calcFinancials(data);
     
-    // BookingForm 내부에서 어떤 변수명을 쓰는지 몰라 가능한 모든 이름을 다 잡아냅니다.
-    let n1 = parseNum(data.net) || parseNum(data.engineer1Net) || parseNum(data["기사1 정산액"]) || parseNum(data.net1) || 0;
-    let n2 = parseNum(data.net2) || parseNum(data.engineer2Net) || parseNum(data["기사2 정산액"]) || 0;
+    // 💡 여기가 핵심입니다. 
+    // 기존 데이터의 값을 '우선적'으로 가져오되, 값이 문자열 "0"이거나 숫자 0이면 그대로 0을 유지합니다.
+    let n1 = 0;
+    if (data.net !== undefined && data.net !== '') {
+        n1 = parseNum(data.net);
+    } else if (data["기사1 정산액"] !== undefined && data["기사1 정산액"] !== '') {
+        n1 = parseNum(data["기사1 정산액"]);
+    }
 
-    // 만약 넘어온 데이터가 명시적으로 0원이라면 0원을 인정합니다.
-    if (data.net === 0 || data.net === '0') n1 = 0;
-    if (data.net2 === 0 || data.net2 === '0') n2 = 0;
+    let n2 = 0;
+    if (data.net2 !== undefined && data.net2 !== '') {
+        n2 = parseNum(data.net2);
+    } else if (data["기사2 정산액"] !== undefined && data["기사2 정산액"] !== '') {
+        n2 = parseNum(data["기사2 정산액"]);
+    }
 
     let f = (data.fee !== undefined && data.fee !== '') ? parseNum(data.fee) : calcFee;
 
-    // 신규 추가건이면서 기사 정산액을 아무것도 입력하지 않았을 때만 총금액-수수료를 1번 기사에게 줍니다. (수정 시에는 절대로 덮어씌우지 않음)
+    // 🚨 완전히 비어있는 "새 예약 추가" 상황에서만 총금액을 계산해서 넣어줍니다.
+    // 사용자가 폼에서 기사1, 기사2 금액을 지우고 저장(수정)하는 경우를 대비해, data.id가 없을 때(완전 신규)만 자동 계산을 허용합니다.
     if (!data.id && n1 === 0 && n2 === 0 && parseNum(data.priceTotal) > 0) {
       n1 = parseNum(data.priceTotal) - f;
     }
