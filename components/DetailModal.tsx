@@ -139,15 +139,15 @@ ${tpl}`;
             <InfoRow label="총금액" value={formatMoney(total)} />
             <InfoRow label="결제방식" value={booking.payMethod} />
             
-            {/* 기사 1 정보 */}
+            {/* 💡 기사 1 정보 (구글 시트의 값 booking.net을 바로 불러오도록 수정!) */}
             <InfoRow label="업체 / 기사 1" value={`${booking.contractor} / ${booking.engineer || '-'}`} />
-            <InfoRow label="기사 1 정산액" value={booking.engineerAmount ? `${booking.engineerAmount}원` : (net !== null ? `${formatMoney(net)} (${rate ?? '?'}%)` : '미확정')} highlight />
+            <InfoRow label="기사 1 정산액" value={`${formatMoney(booking.net)}원`} highlight />
             
-            {/* 기사 2 정보 (입력된 경우에만 표시) */}
+            {/* 💡 기사 2 정보 (입력된 경우에만 표시, 구글 시트의 값 booking.net2를 불러오도록 수정!) */}
             {booking.engineer2 && (
               <>
                 <InfoRow label="기사 2" value={booking.engineer2} />
-                <InfoRow label="기사 2 정산액" value={booking.engineer2Amount ? `${booking.engineer2Amount}원` : '-'} highlight />
+                <InfoRow label="기사 2 정산액" value={`${formatMoney(booking.net2)}원`} highlight />
               </>
             )}
 
