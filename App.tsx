@@ -90,11 +90,15 @@ const App: React.FC = () => {
 
   const handleSave = (data: any) => {
     const { fee: calcFee } = calcFinancials(data);
-    let n1 = parseNum(data.net);
-    let n2 = parseNum(data.net2);
+    
+    // 사용자가 입력한 기사별 정산액을 정확히 파싱하여 유지합니다.
+    let n1 = data.net !== undefined ? parseNum(data.net) : parseNum(data["기사1 정산액"]);
+    let n2 = data.net2 !== undefined ? parseNum(data.net2) : parseNum(data["기사2 정산액"]);
     let f = (data.fee !== undefined && data.fee !== '') ? parseNum(data.fee) : calcFee;
 
-    if (n1 === 0 && n2 === 0 && parseNum(data.priceTotal) > 0) {
+    // 신규 예약 추가 시에만, 기사 정산액이 '아예 비어있을 때' 자동 계산을 수행합니다.
+    // 기존처럼 입력한 값을 무시하고 덮어씌우지 않습니다.
+    if (!data.id && (data.net === undefined || data.net === '') && (data.net2 === undefined || data.net2 === '') && parseNum(data.priceTotal) > 0) {
       n1 = parseNum(data.priceTotal) - f;
     }
 
