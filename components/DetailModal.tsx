@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Booking } from '../types';
 import { calcFinancials, formatMoney, loadSmsTemplate, DEFAULT_SMS_TEMPLATE } from '../services/utils';
 import { X, Phone, MessageCircle, Edit, Trash, CreditCard, CheckCircle, MapPin, FileSignature } from 'lucide-react';
+import ConsentModal from './ConsentModal'; // 동의서 모달 임포트 추가
 
 interface Props {
   booking: Booking | null;
@@ -12,6 +13,10 @@ interface Props {
 }
 
 const DetailModal: React.FC<Props> = ({ booking, onClose, onEdit, onDelete, onTogglePaid }) => {
+  // 모달 제어를 위한 상태 추가
+  const [showConsent, setShowConsent] = useState(false);
+  const [isSavingSignature, setIsSavingSignature] = useState(false);
+
   if (!booking) return null;
 
   const { total, fee, net, rate } = calcFinancials(booking);
@@ -50,6 +55,35 @@ ${tpl}`;
     // T맵 검색결과로 바로 이동하는 URL 스킴
     const tmapUrl = `tmap://search?name=${encodeURIComponent(address)}`;
     window.location.href = tmapUrl;
+  };
+
+  // 서명 저장 처리 함수 추가
+  const handleSaveSignature = async (signatureBase64: string, isDisagree: boolean) => {
+    setIsSavingSignature(true);
+    try {
+      const payload = {
+        action: 'SAVE_SIGNATURE',
+        bookingId: booking.id, // 현재 예약 ID 사용
+        customerName: booking.customer,
+        isDisagree: isDisagree,
+        imageStr: signatureBase64.split(',')[1] // 'data:image/png;base64,' 부분 제거
+      };
+
+      // App.tsx와 동일한 웹앱 URL 사용 (자신의 URL로 교체 필요)
+      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz2Q6UXI_zu3qv4oy9CljlDYRnIA6-OqKHMUgpW6ZqXFuhZsIiIQpkbwBglzTiwFudJ/exec";
+      
+      await fetch(WEB_APP_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
+      alert('서명이 성공적으로 저장되었습니다.');
+      setShowConsent(false);
+    } catch (error) {
+      alert('서명 저장에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsSavingSignature(false);
+    }
   };
 
   const InfoRow = ({ label, value, highlight = false }: any) => (
@@ -123,11 +157,20 @@ ${tpl}`;
              <a href={`tel:${booking.phone}`} className="flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors">
                <Phone size={18} /> 전화걸기
              </a>
+
+             {/* 추가된 버튼: 세척동의서 서명받기 (미리보기 화면에서 바로 받을 수 있도록) */}
+             <button 
+               onClick={() => setShowConsent(true)} 
+               className="col-span-2 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors active:scale-95 shadow-sm"
+             >
+               <FileSignature size={18} /> 세척동의서 서명받기
+             </button>
+
              <button onClick={() => onTogglePaid(booking)} className={`col-span-2 py-3 rounded-xl font-bold border transition-colors flex items-center justify-center gap-2 ${booking.paid === '완료' ? 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100' : 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'}`}>
                {booking.paid === '완료' ? <><CreditCard size={18} /> 미수금으로 변경</> : <><CheckCircle size={18} /> 결제완료 처리</>}
              </button>
              
-             {/* 추가된 버튼: 세척 동의서 서명 확인 (서명 링크가 있을 때만 렌더링) */}
+             {/* 세척 동의서 서명 확인 (서명 링크가 있을 때만 렌더링) */}
              {booking.signatureUrl && (
                <a 
                  href={booking.signatureUrl} 
@@ -151,6 +194,21 @@ ${tpl}`;
           </div>
         </div>
       </div>
+
+      {/* 동의서 모달 렌더링 (showConsent가 true일 때만 보임) */}
+      {showConsent && (
+        <ConsentModal 
+          onClose={() => setShowConsent(false)} 
+          onSaveSignature={handleSaveSignature} 
+        />
+      )}
+      
+      {/* 서명 저장 중 로딩 오버레이 */}
+      {isSavingSignature && (
+        <div className="fixed inset-0 z-[60] bg-white/80 flex items-center justify-center font-black text-blue-600 animate-pulse">
+          서명을 구글 드라이브에 저장 중입니다...
+        </div>
+      )}
     </div>
   );
 };
