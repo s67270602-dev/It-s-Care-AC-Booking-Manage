@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Booking } from '../types';
 import { loadSmsTemplate, saveSmsTemplate, DEFAULT_SMS_TEMPLATE } from '../services/utils';
 import { Save, RefreshCw, MessageSquare } from 'lucide-react';
+import ConsentModal from './ConsentModal'; // 세척 동의서 모달 컴포넌트 추가
 
 interface Props {
   initialData?: Booking | null;
@@ -36,6 +37,10 @@ const emptyFormState = {
 const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => {
   const [formData, setFormData] = useState(emptyFormState);
   const [smsTemplate, setSmsTemplate] = useState(DEFAULT_SMS_TEMPLATE);
+  
+  // 동의서 관련 상태 추가
+  const [showConsent, setShowConsent] = useState(false);
+  const [isSavingSignature, setIsSavingSignature] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -143,6 +148,34 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
     if (window.confirm('기본 문구로 복원하시겠습니까?')) {
       setSmsTemplate(DEFAULT_SMS_TEMPLATE);
       saveSmsTemplate(DEFAULT_SMS_TEMPLATE);
+    }
+  };
+
+  // 서명 구글 스크립트 전송 처리 함수 추가
+  const handleSaveSignature = async (signatureBase64: string, isDisagree: boolean) => {
+    setIsSavingSignature(true);
+    try {
+      const payload = {
+        action: 'SAVE_SIGNATURE',
+        bookingId: initialData?.id || `ac_${Date.now()}`,
+        customerName: formData.customer || '이름없음',
+        isDisagree: isDisagree,
+        imageStr: signatureBase64.split(',')[1] // 'data:image/png;base64,' 제거
+      };
+
+      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz2Q6UXI_zu3qv4oy9CljlDYRnIA6-OqKHMUgpW6ZqXFuhZsIiIQpkbwBglzTiwFudJ/exec";
+      
+      await fetch(WEB_APP_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
+      alert('서명이 성공적으로 저장되었습니다.');
+      setShowConsent(false);
+    } catch (error) {
+      alert('서명 저장에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsSavingSignature(false);
     }
   };
 
@@ -314,7 +347,6 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
             />
           </div>
 
-          {/* 추가된 기사 1 입력 */}
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>담당 기사 1</label>
             <input
@@ -325,7 +357,6 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
             />
           </div>
 
-          {/* 추가된 기사 1 정산액 입력 */}
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>기사 1 정산액</label>
             <input
@@ -337,7 +368,6 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
             />
           </div>
 
-          {/* 추가된 기사 2 입력 */}
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>담당 기사 2 (선택)</label>
             <input
@@ -348,7 +378,6 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
             />
           </div>
 
-          {/* 추가된 기사 2 정산액 입력 */}
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>기사 2 정산액 (선택)</label>
             <input
@@ -430,7 +459,18 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
             />
           </div>
 
-          <div className="md:col-span-2 flex flex-col md:flex-row gap-3 pt-4">
+          {/* 추가된 버튼: 세척 동의서 서명받기 */}
+          <div className="md:col-span-2 mt-2">
+            <button
+              type="button"
+              onClick={() => setShowConsent(true)}
+              className="w-full py-4 border-2 border-blue-600 text-blue-600 bg-white font-bold rounded-xl shadow-sm hover:bg-blue-50 active:bg-blue-100 transition-colors flex items-center justify-center gap-2 text-base"
+            >
+              📋 세척 동의서 서명받기
+            </button>
+          </div>
+
+          <div className="md:col-span-2 flex flex-col md:flex-row gap-3 pt-4 border-t border-slate-100">
             <button
               type="submit"
               className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-base"
@@ -494,6 +534,21 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
           </button>
         </div>
       </section>
+
+      {/* 동의서 모달 렌더링 */}
+      {showConsent && (
+        <ConsentModal 
+          onClose={() => setShowConsent(false)} 
+          onSaveSignature={handleSaveSignature} 
+        />
+      )}
+      
+      {/* 서명 저장 중 로딩 오버레이 */}
+      {isSavingSignature && (
+        <div className="fixed inset-0 z-[70] bg-white/80 flex items-center justify-center font-black text-blue-600 animate-pulse">
+          서명을 구글 드라이브에 저장 중입니다...
+        </div>
+      )}
     </div>
   );
 };
