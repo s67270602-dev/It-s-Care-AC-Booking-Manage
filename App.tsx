@@ -91,13 +91,17 @@ const App: React.FC = () => {
   const handleSave = (data: any) => {
     const { fee: calcFee } = calcFinancials(data);
     
-    // 폼에서 입력한 기사 1, 기사 2 정산액을 가장 최우선으로 가져와 숫자로 바꿉니다.
-    let n1 = parseNum(data.net);
-    let n2 = parseNum(data.net2);
+    // BookingForm 내부에서 어떤 변수명을 쓰는지 몰라 가능한 모든 이름을 다 잡아냅니다.
+    let n1 = parseNum(data.net) || parseNum(data.engineer1Net) || parseNum(data["기사1 정산액"]) || parseNum(data.net1) || 0;
+    let n2 = parseNum(data.net2) || parseNum(data.engineer2Net) || parseNum(data["기사2 정산액"]) || 0;
+
+    // 만약 넘어온 데이터가 명시적으로 0원이라면 0원을 인정합니다.
+    if (data.net === 0 || data.net === '0') n1 = 0;
+    if (data.net2 === 0 || data.net2 === '0') n2 = 0;
+
     let f = (data.fee !== undefined && data.fee !== '') ? parseNum(data.fee) : calcFee;
 
-    // "새 예약 추가"일 때만, 그리고 정산액을 아무것도 입력 안 했을 때만 1번 기사에게 몰아줍니다.
-    // 기존 데이터 "수정(UPDATE)"일 때는 이 로직이 무시되어 입력하신 16만원이 그대로 보존됩니다.
+    // 신규 추가건이면서 기사 정산액을 아무것도 입력하지 않았을 때만 총금액-수수료를 1번 기사에게 줍니다. (수정 시에는 절대로 덮어씌우지 않음)
     if (!data.id && n1 === 0 && n2 === 0 && parseNum(data.priceTotal) > 0) {
       n1 = parseNum(data.priceTotal) - f;
     }
