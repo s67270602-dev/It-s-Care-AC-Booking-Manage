@@ -53,14 +53,20 @@ const SummaryView: React.FC<Props> = ({ bookings }) => {
     bookings.forEach(b => {
       if (!b.bookDate.startsWith(target)) return;
       
-      const { total, fee, net } = calcFinancials(b);
+      const { total, fee, net: calcNet } = calcFinancials(b);
+      
+      // 💡 여기서 구글 시트에 저장된 실제 기사 정산액(net, net2)을 꺼냅니다.
+      const amt1 = parseNum(b.net);
+      const amt2 = parseNum(b.net2);
+      const totalNet = amt1 + amt2;
+      const hasExplicitAmounts = amt1 > 0 || amt2 > 0;
       
       // 전체 통계
       stats.count++;
       stats.sales += total;
-      if (fee !== null && net !== null) {
+      if (fee !== null && calcNet !== null) {
         stats.fee += fee;
-        stats.net += net;
+        stats.net += hasExplicitAmounts ? totalNet : calcNet;
       } else {
         stats.unknown++;
       }
@@ -70,27 +76,22 @@ const SummaryView: React.FC<Props> = ({ bookings }) => {
       const cObj = getOrInit(contractorMap, cKey);
       cObj.count++;
       cObj.sales += total;
-      if (fee !== null && net !== null) {
+      if (fee !== null && calcNet !== null) {
         cObj.fee += fee;
-        cObj.net += net;
+        cObj.net += hasExplicitAmounts ? totalNet : calcNet;
       } else {
         cObj.unknown++;
       }
-
-      // 기사 1, 기사 2 정산액 추출
-      const amt1 = parseNum(b.engineerAmount);
-      const amt2 = parseNum(b.engineer2Amount);
-      const hasExplicitAmounts = amt1 > 0 || amt2 > 0;
 
       // 기사 1 통계
       const e1Key = b.engineer || '미지정';
       const e1Obj = getOrInit(engineerMap, e1Key);
       e1Obj.count++;
       e1Obj.sales += total;
-      if (fee !== null && net !== null) {
+      if (fee !== null && calcNet !== null) {
         e1Obj.fee += fee;
-        // 개별 금액이 적혀있으면 그 금액을, 없으면 전체 정산액(net)을 기사 1에게 배정
-        e1Obj.net += hasExplicitAmounts ? amt1 : net;
+        // ★ 구글 시트의 기사 1 정산액을 정확히 더해줍니다.
+        e1Obj.net += hasExplicitAmounts ? amt1 : calcNet;
       } else {
         e1Obj.unknown++;
       }
@@ -99,8 +100,8 @@ const SummaryView: React.FC<Props> = ({ bookings }) => {
       if (b.engineer2) {
         const e2Obj = getOrInit(engineerMap, b.engineer2);
         e2Obj.count++; // 참여 건수 추가
-        // 총매출이나 수수료를 중복 합산하면 통계가 부풀려지므로 정산액만 추가
-        if (fee !== null && net !== null) {
+        if (fee !== null && calcNet !== null) {
+          // ★ 구글 시트의 기사 2 정산액을 정확히 더해줍니다.
           e2Obj.net += amt2;
         }
       }
