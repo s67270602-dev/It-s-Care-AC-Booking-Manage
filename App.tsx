@@ -11,7 +11,8 @@ import { Download, LogOut, Calendar as CalendarIcon, ChevronLeft } from 'lucide-
 type Tab = 'home' | 'list' | 'settings';
 type Role = 'admin' | 'engineer' | null;
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxY893O6AN73Ru5BbTJzJciqBSJ_Lf0AgQBveI5XHCgwxsA--tIj1cfs9wz0o3M_xPP/exec";
+// 새로운 배포 URL로 수정되었습니다.
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx8tgtYkrVcwdEYxrpgQfqwouVfanNm2qB_A27j8bl3hhKf-a1xLTLfFFKJFqqUXwIZ/exec";
 
 const parseNum = (val: any) => {
   if (!val) return 0;
