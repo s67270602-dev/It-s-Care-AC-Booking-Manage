@@ -65,6 +65,7 @@ ${tpl}`;
         action: 'SAVE_SIGNATURE',
         bookingId: booking.id, // 현재 예약 ID 사용
         customerName: booking.customer,
+        phone: booking.phone, // ★ 이 부분이 반드시 있어야 구글 시트에 기록됩니다!
         isDisagree: isDisagree,
         imageStr: signatureBase64.split(',')[1] // 'data:image/png;base64,' 부분 제거
       };
@@ -72,13 +73,18 @@ ${tpl}`;
       // App.tsx와 동일한 웹앱 URL 사용 (자신의 URL로 교체 필요)
       const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz2Q6UXI_zu3qv4oy9CljlDYRnIA6-OqKHMUgpW6ZqXFuhZsIiIQpkbwBglzTiwFudJ/exec";
       
-      await fetch(WEB_APP_URL, {
+      const response = await fetch(WEB_APP_URL, {
         method: 'POST',
         body: JSON.stringify(payload)
       });
+      const data = await response.json();
       
-      alert('서명이 성공적으로 저장되었습니다.');
-      setShowConsent(false);
+      if(data.result === 'success') {
+          alert('서명이 성공적으로 저장되었습니다. (새로고침을 하면 반영됩니다)');
+          setShowConsent(false);
+      } else {
+          alert('저장 실패: ' + data.message);
+      }
     } catch (error) {
       alert('서명 저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
