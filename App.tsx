@@ -91,8 +91,7 @@ const App: React.FC = () => {
   const handleSave = (data: any) => {
     const { fee: calcFee } = calcFinancials(data);
     
-    // 💡 여기가 핵심입니다. 
-    // 기존 데이터의 값을 '우선적'으로 가져오되, 값이 문자열 "0"이거나 숫자 0이면 그대로 0을 유지합니다.
+    // 구글 시트에서 가져온 값 최우선 존중
     let n1 = 0;
     if (data.net !== undefined && data.net !== '') {
         n1 = parseNum(data.net);
@@ -109,8 +108,7 @@ const App: React.FC = () => {
 
     let f = (data.fee !== undefined && data.fee !== '') ? parseNum(data.fee) : calcFee;
 
-    // 🚨 완전히 비어있는 "새 예약 추가" 상황에서만 총금액을 계산해서 넣어줍니다.
-    // 사용자가 폼에서 기사1, 기사2 금액을 지우고 저장(수정)하는 경우를 대비해, data.id가 없을 때(완전 신규)만 자동 계산을 허용합니다.
+    // 완전 신규 예약 추가 시에만 자동 계산 허용
     if (!data.id && n1 === 0 && n2 === 0 && parseNum(data.priceTotal) > 0) {
       n1 = parseNum(data.priceTotal) - f;
     }
