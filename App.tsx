@@ -11,7 +11,7 @@ import { Download, LogOut, Calendar as CalendarIcon, Plus, ChevronLeft } from 'l
 type Tab = 'home' | 'list' | 'settings';
 type Role = 'admin' | 'engineer' | null;
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz2Q6UXI_zu3qv4oy9CljlDYRnIA6-OqKHMUgpW6ZqXFuhZsIiIQpkbwBglzTiwFudJ/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxY893O6AN73Ru5BbTJzJciqBSJ_Lf0AgQBveI5XHCgwxsA--tIj1cfs9wz0o3M_xPP/exec";
 
 // 금액 계산 시 콤마 등 문자열이 섞여 있어도 안전하게 숫자로 변환해주는 함수
 const parseNum = (val: any) => {
