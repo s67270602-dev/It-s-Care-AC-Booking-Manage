@@ -13,6 +13,7 @@ type Role = 'admin' | 'engineer' | null;
 
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxY893O6AN73Ru5BbTJzJciqBSJ_Lf0AgQBveI5XHCgwxsA--tIj1cfs9wz0o3M_xPP/exec";
 
+// 금액 계산 시 안전하게 숫자로 변환
 const parseNum = (val: any) => {
   if (!val) return 0;
   if (typeof val === 'number') return val;
@@ -33,7 +34,7 @@ const App: React.FC = () => {
   const ADMIN_PASS = "081607";
   const ENGINEER_PASS = "7672";
 
-  // 1. 서버에서 데이터 가져오기 (데이터 로드 시 합쳐짐 방지 로직 강화)
+  // 1. 서버에서 데이터 가져오기 (기사별 금액 유지 핵심 로직)
   useEffect(() => {
     if (!role) return;
     const loadFromServer = async () => {
@@ -44,17 +45,18 @@ const App: React.FC = () => {
         const mapped: Booking[] = (data.bookings || []).map((row: any, idx: number) => {
           
           const price = parseNum(row[13]);
-          const rawFee = parseNum(row[14]);
+          const fee = parseNum(row[14]);
           const rawNet1 = parseNum(row[15]); // 기사 1 정산액 (P열)
           const rawNet2 = parseNum(row[21]); // 기사 2 정산액 (V열)
           
           let net1 = rawNet1;
           let net2 = rawNet2;
 
-          // 보정 로직: 서버에서 가져온 기사1, 기사2 정산액이 둘 다 0일 때만 총액으로 계산함
-          // 만약 기사 2 금액(net2)이 1원이라도 있다면, net1을 총액으로 덮어씌우지 않음
+          // 보정 로직: 서버에서 가져온 두 기사의 정산액이 모두 0일 때만 (기존 데이터)
+          // 총액에서 수수료를 뺀 금액을 기사 1에게 할당합니다.
+          // 이미 160,000원씩 나누어 저장했다면 이 로직을 타지 않고 그대로 로드됩니다.
           if (net1 === 0 && net2 === 0 && price > 0) {
-            net1 = price - rawFee;
+            net1 = price - fee;
           }
 
           return {
@@ -74,10 +76,10 @@ const App: React.FC = () => {
             contractor: row[11] || '',
             commissionRate: row[12] || '',
             priceTotal: row[13] || '',
-            fee: rawFee,
+            fee: fee,
             net: net1,
-            engineer2: row[20] || '', 
-            net2: net2,            
+            engineer2: row[20] || '', // 기사 2 성함 (U열)
+            net2: net2,               // 기사 2 정산액 (V열)
             paid: row[16] || '',
             memo: row[17] || '',
             signatureUrl: row[18] || '', 
@@ -108,19 +110,19 @@ const App: React.FC = () => {
 
   useEffect(() => { if (role === 'engineer') setActiveTab('home'); }, [role]);
 
+  // 2. 예약 저장 시 기사별 금액 보존 로직
   const handleSave = (data: any) => {
-    const { fee: calcFee, net: calcNet } = calcFinancials(data); 
+    const { fee: calcFee } = calcFinancials(data); 
     
-    // 수동 입력값(data.net, data.net2)이 있는지 확인하여 자동 계산값이 덮어쓰지 못하게 함
-    const hasManualNet1 = data.net !== undefined && data.net !== null && data.net !== '';
-    const hasManualNet2 = data.net2 !== undefined && data.net2 !== null && data.net2 !== '';
+    // 사용자가 폼에서 입력한 기사1, 기사2의 정산액을 우선적으로 가져옵니다.
+    let finalNet1 = parseNum(data.net);
+    let finalNet2 = parseNum(data.net2);
+    let finalFee = (data.fee !== undefined && data.fee !== '') ? parseNum(data.fee) : calcFee;
 
-    let finalNet1 = hasManualNet1 ? parseNum(data.net) : 0;
-    let finalNet2 = hasManualNet2 ? parseNum(data.net2) : 0;
-
-    // 기사 1, 2 금액이 모두 입력되지 않았을 때만 전체 금액 할당
-    if (!hasManualNet1 && !hasManualNet2) {
-        finalNet1 = parseNum(data.priceTotal) - parseNum(data.fee || calcFee);
+    // 만약 두 금액이 모두 0이라면 (새로 등록하거나 분할 입력을 안 한 경우), 
+    // 기존처럼 총금액 - 수수료를 기사 1에게 할당합니다.
+    if (finalNet1 === 0 && finalNet2 === 0 && parseNum(data.priceTotal) > 0) {
+        finalNet1 = parseNum(data.priceTotal) - finalFee;
     }
 
     let formattedTime = data.bookTime ? String(data.bookTime).trim() : "";
@@ -142,9 +144,9 @@ const App: React.FC = () => {
       ...data, 
       bookTime: formattedTime, 
       ampm: formattedAmPm, 
+      fee: finalFee,
       net: finalNet1, 
-      net2: finalNet2,
-      fee: (data.fee !== undefined && data.fee !== '') ? parseNum(data.fee) : calcFee
+      net2: finalNet2 
     };
 
     if (data.id && bookings.some(b => b.id === data.id)) {
@@ -168,14 +170,13 @@ const App: React.FC = () => {
     }
   };
 
+  // 3. 결제 상태 변경 시에도 분할된 금액 유지
   const handleTogglePaid = (booking: Booking) => {
     const isCurrentlyPaid = booking.paid === '완료';
     const confirmMessage = isCurrentlyPaid ? '결제 미완료 상태로 변경하시겠습니까?' : '결제 완료 처리하시겠습니까?';
     if (!window.confirm(confirmMessage)) return;
 
     const newVal = isCurrentlyPaid ? '미완료' : '완료';
-    
-    // 상태 변경 시 기존의 분할된 정산액(net, net2)을 엄격히 유지
     const updatedBooking = { 
         ...booking, 
         paid: newVal,
