@@ -24,6 +24,8 @@ export interface Booking {
   createdAt: number;
   fee?: number; // (App.tsx 사용 보정용)
   net?: number; // (App.tsx 사용 보정용)
+  signatureUrl?: string; // 추가: 구글 드라이브에 저장된 서명 이미지 링크
+  isDisagree?: boolean;  // 추가: 세척 미동의 여부 체크
 }
 
 export interface SummaryStats {
