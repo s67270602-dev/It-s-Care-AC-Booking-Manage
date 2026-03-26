@@ -33,7 +33,7 @@ const App: React.FC = () => {
   const ADMIN_PASS = "081607";
   const ENGINEER_PASS = "7672";
 
-  // 1. 서버에서 데이터 가져오기 (기사 2 데이터 매핑 추가)
+  // 1. 서버에서 데이터 가져오기 (데이터 로드 시 합쳐짐 방지 로직 강화)
   useEffect(() => {
     if (!role) return;
     const loadFromServer = async () => {
@@ -45,12 +45,15 @@ const App: React.FC = () => {
           
           const price = parseNum(row[13]);
           const rawFee = parseNum(row[14]);
-          const rawNet1 = parseNum(row[15]); // 기사 1 정산액
-          const rawNet2 = parseNum(row[21]); // 기사 2 정산액 (U열 이후 가정)
+          const rawNet1 = parseNum(row[15]); // 기사 1 정산액 (P열)
+          const rawNet2 = parseNum(row[21]); // 기사 2 정산액 (V열)
           
-          // 수수료율이 없어 정산액이 0인 경우에만 보정하되, 기사 2 정산액이 있다면 합산되지 않도록 유지
           let net1 = rawNet1;
-          if (net1 === 0 && rawNet2 === 0 && price > 0) {
+          let net2 = rawNet2;
+
+          // 보정 로직: 서버에서 가져온 기사1, 기사2 정산액이 둘 다 0일 때만 총액으로 계산함
+          // 만약 기사 2 금액(net2)이 1원이라도 있다면, net1을 총액으로 덮어씌우지 않음
+          if (net1 === 0 && net2 === 0 && price > 0) {
             net1 = price - rawFee;
           }
 
@@ -73,8 +76,8 @@ const App: React.FC = () => {
             priceTotal: row[13] || '',
             fee: rawFee,
             net: net1,
-            engineer2: row[20] || '', // 기사 2 이름
-            net2: rawNet2,            // 기사 2 정산액
+            engineer2: row[20] || '', 
+            net2: net2,            
             paid: row[16] || '',
             memo: row[17] || '',
             signatureUrl: row[18] || '', 
@@ -106,16 +109,18 @@ const App: React.FC = () => {
   useEffect(() => { if (role === 'engineer') setActiveTab('home'); }, [role]);
 
   const handleSave = (data: any) => {
-    const { total, fee, net } = calcFinancials(data); 
+    const { fee: calcFee, net: calcNet } = calcFinancials(data); 
     
-    // 기사 1 정산액 결정 (수동 입력값 우선)
-    let finalNet1 = (data.net !== undefined && data.net !== null && data.net !== '') ? parseNum(data.net) : (net || 0);
-    // 기사 2 정산액 결정 (수동 입력값 우선)
-    let finalNet2 = (data.net2 !== undefined && data.net2 !== null && data.net2 !== '') ? parseNum(data.net2) : 0;
+    // 수동 입력값(data.net, data.net2)이 있는지 확인하여 자동 계산값이 덮어쓰지 못하게 함
+    const hasManualNet1 = data.net !== undefined && data.net !== null && data.net !== '';
+    const hasManualNet2 = data.net2 !== undefined && data.net2 !== null && data.net2 !== '';
 
-    // 보정 로직: 둘 다 0일 때만 총액에서 수수료 뺀 값을 기사 1에게 할당
-    if (finalNet1 === 0 && finalNet2 === 0 && parseNum(data.priceTotal) > 0) {
-        finalNet1 = parseNum(data.priceTotal) - parseNum(data.fee || fee);
+    let finalNet1 = hasManualNet1 ? parseNum(data.net) : 0;
+    let finalNet2 = hasManualNet2 ? parseNum(data.net2) : 0;
+
+    // 기사 1, 2 금액이 모두 입력되지 않았을 때만 전체 금액 할당
+    if (!hasManualNet1 && !hasManualNet2) {
+        finalNet1 = parseNum(data.priceTotal) - parseNum(data.fee || calcFee);
     }
 
     let formattedTime = data.bookTime ? String(data.bookTime).trim() : "";
@@ -138,7 +143,8 @@ const App: React.FC = () => {
       bookTime: formattedTime, 
       ampm: formattedAmPm, 
       net: finalNet1, 
-      net2: finalNet2 
+      net2: finalNet2,
+      fee: (data.fee !== undefined && data.fee !== '') ? parseNum(data.fee) : calcFee
     };
 
     if (data.id && bookings.some(b => b.id === data.id)) {
@@ -169,7 +175,7 @@ const App: React.FC = () => {
 
     const newVal = isCurrentlyPaid ? '미완료' : '완료';
     
-    // 상태 변경 시 기존에 분리되어 있던 정산액들(net, net2)을 그대로 유지
+    // 상태 변경 시 기존의 분할된 정산액(net, net2)을 엄격히 유지
     const updatedBooking = { 
         ...booking, 
         paid: newVal,
