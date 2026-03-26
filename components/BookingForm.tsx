@@ -24,14 +24,20 @@ const emptyFormState = {
   bookTime: '',
   ampm: '오전' as '오전' | '오후',
   engineer: '',
-  engineerAmount: '',
+  net: '', // engineerAmount에서 net으로 수정 (App.tsx와 통일)
   engineer2: '',
-  engineer2Amount: '',
+  net2: '', // engineer2Amount에서 net2로 수정 (App.tsx와 통일)
   contractor: '자체건',
   commissionRate: '0',
   payMethod: '카드',
   paid: '미완료' as '완료' | '미완료',
   memo: ''
+};
+
+const formatCurrency = (value: string) => {
+  const raw = value.replace(/[^0-9]/g, '');
+  if (!raw) return '';
+  return Number(raw).toLocaleString();
 };
 
 const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => {
@@ -45,27 +51,27 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
   useEffect(() => {
     if (initialData) {
       setFormData({
-        customer: initialData.customer,
-        phone: initialData.phone,
-        address: initialData.address,
-        group: initialData.group,
-        model: initialData.model,
-        type: initialData.type,
-        qty: initialData.qty,
-        scope: initialData.scope,
-        priceTotal: initialData.priceTotal, // Assuming already formatted or string
-        bookDate: initialData.bookDate,
-        bookTime: initialData.bookTime,
-        ampm: initialData.ampm,
+        customer: initialData.customer || '',
+        phone: initialData.phone || '',
+        address: initialData.address || '',
+        group: initialData.group || '',
+        model: initialData.model || '',
+        type: initialData.type || '벽걸이',
+        qty: initialData.qty || 1,
+        scope: initialData.scope || '실내기',
+        priceTotal: initialData.priceTotal ? formatCurrency(String(initialData.priceTotal)) : '',
+        bookDate: initialData.bookDate || '',
+        bookTime: initialData.bookTime || '',
+        ampm: initialData.ampm || '오전',
         engineer: initialData.engineer || '',
-        engineerAmount: initialData.engineerAmount || '',
+        net: initialData.net ? formatCurrency(String(initialData.net)) : '', // 기존 데이터 불러올 때 정상 표시
         engineer2: initialData.engineer2 || '',
-        engineer2Amount: initialData.engineer2Amount || '',
-        contractor: initialData.contractor,
-        commissionRate: initialData.commissionRate,
-        payMethod: initialData.payMethod,
-        paid: initialData.paid,
-        memo: initialData.memo
+        net2: initialData.net2 ? formatCurrency(String(initialData.net2)) : '', // 기존 데이터 불러올 때 정상 표시
+        contractor: initialData.contractor || '자체건',
+        commissionRate: initialData.commissionRate || '0',
+        payMethod: initialData.payMethod || '카드',
+        paid: initialData.paid || '미완료',
+        memo: initialData.memo || ''
       });
     } else {
       setFormData(emptyFormState);
@@ -83,12 +89,6 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
     return `${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7, 11)}`;
   };
 
-  const formatCurrency = (value: string) => {
-    const raw = value.replace(/[^0-9]/g, '');
-    if (!raw) return '';
-    return Number(raw).toLocaleString();
-  };
-
   const handleChange = (field: keyof typeof formData, value: any) => {
     let finalValue = value;
 
@@ -96,8 +96,8 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
     if (field === 'phone') {
       finalValue = formatPhone(value);
     }
-    // Auto-format Currency
-    if (field === 'priceTotal' || field === 'engineerAmount' || field === 'engineer2Amount') {
+    // Auto-format Currency (net, net2로 변경된 변수명 반영)
+    if (field === 'priceTotal' || field === 'net' || field === 'net2') {
       finalValue = formatCurrency(value);
     }
 
@@ -131,7 +131,7 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
     onSave({
       ...formData,
       id: initialData?.id
-    });
+    } as any);
     
     if (!initialData) {
       // Reset only if adding new
@@ -360,8 +360,8 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>기사 1 정산액</label>
             <input
-              value={formData.engineerAmount}
-              onChange={e => handleChange('engineerAmount', e.target.value)}
+              value={formData.net} // net으로 변경
+              onChange={e => handleChange('net', e.target.value)} // net으로 변경
               placeholder="예) 100,000 (숫자만)"
               inputMode="numeric"
               className={inputClass}
@@ -381,8 +381,8 @@ const BookingForm: React.FC<Props> = ({ initialData, onSave, onCancelEdit }) => 
           <div className="flex flex-col gap-1.5">
             <label className={labelClass}>기사 2 정산액 (선택)</label>
             <input
-              value={formData.engineer2Amount}
-              onChange={e => handleChange('engineer2Amount', e.target.value)}
+              value={formData.net2} // net2로 변경
+              onChange={e => handleChange('net2', e.target.value)} // net2로 변경
               placeholder="예) 80,000 (숫자만)"
               inputMode="numeric"
               className={inputClass}
