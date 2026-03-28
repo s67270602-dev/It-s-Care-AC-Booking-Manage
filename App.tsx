@@ -199,7 +199,7 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
         <div className="bg-white w-full max-w-sm rounded-[32px] p-10 shadow-2xl text-center">
           <div className="w-16 h-16 bg-blue-600 rounded-3xl flex items-center justify-center text-white font-black text-2xl mx-auto mb-6 shadow-lg">잇</div>
-          <h2 className="text-xl font-black text-slate-800 mb-2">이끌림 에어컨케어</h2>
+          <h2 className="text-xl font-black text-slate-800 mb-2">잇츠케어에어컨케어</h2>
           <form onSubmit={handleLogin} className="space-y-4">
             <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="비밀번호 입력"
               className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-center font-bold outline-none focus:border-blue-500" autoFocus />
@@ -216,7 +216,7 @@ const App: React.FC = () => {
       <header className="bg-white border-b sticky top-0 z-40 px-4 py-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg text-white font-black text-xl">잇</div>
-          <h1 className="text-xl font-black leading-none">이끌림 에어컨</h1>
+          <h1 className="text-xl font-black leading-none">잇츠케어_에어컨</h1>
         </div>
         <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><LogOut size={20} /></button>
       </header>
