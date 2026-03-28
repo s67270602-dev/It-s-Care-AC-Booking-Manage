@@ -83,9 +83,9 @@ const BookingList: React.FC<Props> = ({ bookings, onEdit, onDelete, onTogglePaid
         {/* Top Row: Counts & Search */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="text-sm font-bold text-slate-700 whitespace-nowrap">
-             총 <span className="text-blue-600 text-lg">{bookings.length}</span> 건
-             <span className="text-slate-400 font-normal mx-2">|</span>
-             표시 <span className="text-slate-800">{filteredBookings.length}</span>
+              총 <span className="text-blue-600 text-lg">{bookings.length}</span> 건
+              <span className="text-slate-400 font-normal mx-2">|</span>
+              표시 <span className="text-slate-800">{filteredBookings.length}</span>
           </div>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -195,7 +195,12 @@ const BookingList: React.FC<Props> = ({ bookings, onEdit, onDelete, onTogglePaid
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="font-bold text-slate-700">{formatMoney(total)}</div>
-                          {net !== null && <div className="text-xs text-indigo-600">정산: {formatMoney(net)}</div>}
+                          {/* [수정됨] 기사2가 있고 정산액이 있으면 분리해서 보여줌 */}
+                          {item.engineer2 && (item.net2 || 0) > 0 ? (
+                            <div className="text-xs text-indigo-600 mt-0.5">정산: {formatMoney(item.net || 0)} / {formatMoney(item.net2 || 0)}</div>
+                          ) : net !== null ? (
+                            <div className="text-xs text-indigo-600 mt-0.5">정산: {formatMoney(net)}</div>
+                          ) : null}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border ${
@@ -206,7 +211,11 @@ const BookingList: React.FC<Props> = ({ bookings, onEdit, onDelete, onTogglePaid
                             {item.paid === '완료' ? '결제완료' : '미수금'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{item.engineer || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {/* [수정됨] 기사2가 있으면 아래에 분리 표기 */}
+                          <div className="font-medium text-slate-700">{item.engineer || '-'}</div>
+                          {item.engineer2 && <div className="text-xs text-slate-400 mt-1">{item.engineer2}</div>}
+                        </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex items-center justify-center gap-1">
                             <button onClick={() => onDetail(item)} className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="상세"><MoreVertical size={16} /></button>
@@ -243,7 +252,11 @@ const BookingList: React.FC<Props> = ({ bookings, onEdit, onDelete, onTogglePaid
                           }`}>
                             {item.paid === '완료' ? '결제완료' : '미수금'}
                          </span>
-                         {item.engineer && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">{item.engineer}</span>}
+                         {/* [수정됨] 모바일에서도 기사1, 기사2 모두 표시되도록 수정 */}
+                         <div className="flex gap-1">
+                           {item.engineer && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">{item.engineer}</span>}
+                           {item.engineer2 && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">{item.engineer2}</span>}
+                         </div>
                       </div>
                     </div>
                     
