@@ -13,7 +13,8 @@ interface Props {
 
 const BookingList: React.FC<Props> = ({ bookings, onEdit, onDelete, onTogglePaid, onDetail }) => {
   const [filter, setFilter] = useState<FilterType>('all');
-  const [sort, setSort] = useState<SortType>('default');
+  // [수정됨] 기본 정렬을 '일정순'으로 변경
+  const [sort, setSort] = useState<SortType>('date'); 
   const [search, setSearch] = useState('');
   const [engFilter, setEngFilter] = useState('');
   const [contractorFilter, setContractorFilter] = useState('');
@@ -45,10 +46,23 @@ const BookingList: React.FC<Props> = ({ bookings, onEdit, onDelete, onTogglePaid
 
     // Sort
     if (sort === 'date') {
+      // [수정됨] 일정 기준 정렬 (내림차순: 가장 늦은 날짜/미래 일정이 위로)
       result.sort((a, b) => {
-        const da = new Date(`${a.bookDate}T${a.bookTime || '00:00'}`);
-        const db = new Date(`${b.bookDate}T${b.bookTime || '00:00'}`);
-        return da.getTime() - db.getTime();
+        const dateA = a.bookDate || '';
+        const dateB = b.bookDate || '';
+        
+        // 1. 날짜가 다르면 내림차순 정렬
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA); 
+        }
+        
+        // 2. 같은 날짜일 경우 오전/오후 비교 (오전이 위로 오게 오름차순)
+        const ampmA = a.ampm === '오후' ? 1 : 0;
+        const ampmB = b.ampm === '오후' ? 1 : 0;
+        if (ampmA !== ampmB) return ampmA - ampmB;
+        
+        // 3. 같은 오전/오후일 경우 시간이 빠른 순서대로
+        return (a.bookTime || '').localeCompare(b.bookTime || '');
       });
     } else if (sort === 'name') {
       result.sort((a, b) => a.customer.localeCompare(b.customer));
@@ -115,8 +129,9 @@ const BookingList: React.FC<Props> = ({ bookings, onEdit, onDelete, onTogglePaid
               onChange={e => setSort(e.target.value as SortType)}
               className="px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-600 focus:outline-none focus:border-blue-400 min-w-[80px]"
             >
+              {/* [수정됨] 드롭다운 옵션도 일정순을 맨 위로 올림 */}
+              <option value="date">일정순</option>
               <option value="default">등록순</option>
-              <option value="date">날짜순</option>
               <option value="name">이름순</option>
               <option value="net">정산액순</option>
             </select>
