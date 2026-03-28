@@ -6,9 +6,10 @@ import BookingList from './components/BookingList';
 import CalendarView from './components/CalendarView';
 import SummaryView from './components/SummaryView';
 import DetailModal from './components/DetailModal';
+import MonthlySettlementView from './components/MonthlySettlementView'; // [새로 추가됨] 월별 정산 컴포넌트
 import { Download, LogOut, ChevronLeft } from 'lucide-react';
 
-type Tab = 'home' | 'list' | 'settings';
+type Tab = 'home' | 'list' | 'settlement' | 'settings'; // [수정됨] 'settlement' 탭 추가
 type Role = 'admin' | 'engineer' | null;
 
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx8tgtYkrVcwdEYxrpgQfqwouVfanNm2qB_A27j8bl3hhKf-a1xLTLfFFKJFqqUXwIZ/exec";
@@ -222,9 +223,15 @@ const App: React.FC = () => {
 
       {role === 'admin' && (
         <div className="max-w-[1920px] mx-auto px-4 mt-6">
-          <div className="flex bg-slate-200/50 p-1 rounded-[22px] w-fit gap-1 shadow-inner">
-            {(['home', 'list', 'settings'] as const).map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-2.5 rounded-[18px] text-sm font-black transition-all ${activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{tab === 'home' ? '대시보드' : tab === 'list' ? '예약목록' : '설정'}</button>
+          <div className="flex bg-slate-200/50 p-1 rounded-[22px] w-fit gap-1 shadow-inner overflow-x-auto">
+            {(['home', 'list', 'settlement', 'settings'] as const).map(tab => (
+              <button 
+                key={tab} 
+                onClick={() => setActiveTab(tab)} 
+                className={`px-6 py-2.5 rounded-[18px] text-sm font-black transition-all whitespace-nowrap ${activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+              >
+                {tab === 'home' ? '대시보드' : tab === 'list' ? '예약목록' : tab === 'settlement' ? '월별정산' : '설정'}
+              </button>
             ))}
           </div>
         </div>
@@ -237,6 +244,7 @@ const App: React.FC = () => {
             {role === 'admin' && <SummaryView bookings={bookings.filter(b => b.paid === '완료')} />}
           </div>
         )}
+        
         {activeTab === 'list' && role === 'admin' && (
           <div className="space-y-4">
             <div className="flex gap-2">
@@ -246,6 +254,14 @@ const App: React.FC = () => {
             <BookingList bookings={bookings} onEdit={(b) => { setEditingBooking(b); setShowFormModal(true); }} onDelete={handleDelete} onTogglePaid={handleTogglePaid} onDetail={setDetailBooking} />
           </div>
         )}
+
+        {/* [새로 추가됨] 월별정산 탭 내용 렌더링 */}
+        {activeTab === 'settlement' && role === 'admin' && (
+          <div className="space-y-4">
+             <MonthlySettlementView bookings={bookings} />
+          </div>
+        )}
+
         {activeTab === 'settings' && role === 'admin' && (
            <div className="bg-white rounded-3xl shadow-sm border p-6 space-y-4">
               <button onClick={() => downloadCSV('에어컨_백업.csv', [], bookings)} className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-slate-600 flex justify-between items-center active:bg-slate-100"><span>CSV 백업 내보내기</span><Download size={18}/></button>
