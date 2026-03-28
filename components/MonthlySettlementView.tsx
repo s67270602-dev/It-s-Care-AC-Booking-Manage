@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Booking } from '../types';
+import { calcFinancials } from '../services/utils'; // 자동 계산 로직 임포트 추가
 import { ChevronLeft, ChevronRight, Calculator, Users, Building2, Receipt } from 'lucide-react';
 
 interface Props {
@@ -33,29 +34,51 @@ const MonthlySettlementView: React.FC<Props> = ({ bookings }) => {
     );
   }, [bookings, monthString]);
 
-  // 1. 전체 합계 계산 (오류 수정됨)
+  // 1. 전체 합계 계산 (대시보드와 동일한 계산식 적용)
   const totalSummary = useMemo(() => {
     let totalRevenue = 0;
     let totalFee = 0;
     let totalNet = 0;
 
     monthlyBookings.forEach(b => {
-      totalRevenue += parseNumber(b.priceTotal);
-      totalFee += parseNumber(b.fee);
-      totalNet += parseNumber(b.net) + parseNumber(b.net2);
+      const pTotal = parseNumber(b.priceTotal);
+      const pFee = parseNumber(b.fee);
+      
+      let n1 = parseNumber(b.net);
+      let n2 = parseNumber(b.net2);
+      
+      const { net: calcNet } = calcFinancials(b);
+
+      // [핵심] 기사2가 없는 단독 작업인데 DB에 정산액이 0으로 비어있다면 대시보드처럼 자동계산
+      if (!b.engineer2 && n1 === 0) {
+          n1 = calcNet !== null && calcNet !== undefined ? calcNet : (pTotal - pFee);
+      }
+
+      totalRevenue += pTotal;
+      totalFee += pFee;
+      totalNet += (n1 + n2);
     });
 
     return { totalRevenue, totalFee, totalNet, count: monthlyBookings.length };
   }, [monthlyBookings]);
 
-  // 2. 기사별 정산 계산 & 상세 리스트 데이터 (새로 추가됨)
+  // 2. 기사별 정산 계산 & 상세 리스트 데이터 (대시보드와 동일한 계산식 적용)
   const engineerStats = useMemo(() => {
     const stats: Record<string, { count: number; net: number; jobs: any[] }> = {};
     
     monthlyBookings.forEach(b => {
-      const n1 = parseNumber(b.net);
-      const n2 = parseNumber(b.net2);
       const pTotal = parseNumber(b.priceTotal);
+      const pFee = parseNumber(b.fee);
+      
+      let n1 = parseNumber(b.net);
+      let n2 = parseNumber(b.net2);
+      
+      const { net: calcNet } = calcFinancials(b);
+
+      // [핵심] 기사2가 없는 단독 작업인데 DB에 정산액이 0으로 비어있다면 대시보드처럼 자동계산
+      if (!b.engineer2 && n1 === 0) {
+          n1 = calcNet !== null && calcNet !== undefined ? calcNet : (pTotal - pFee);
+      }
 
       // 기사 1 데이터 수집
       if (b.engineer) {
@@ -71,6 +94,7 @@ const MonthlySettlementView: React.FC<Props> = ({ bookings }) => {
           isCoop: !!b.engineer2 // 기사2가 있으면 2인 1조
         });
       }
+      
       // 기사 2 데이터 수집
       if (b.engineer2) {
         if (!stats[b.engineer2]) stats[b.engineer2] = { count: 0, net: 0, jobs: [] };
@@ -220,7 +244,7 @@ const MonthlySettlementView: React.FC<Props> = ({ bookings }) => {
         </div>
       </div>
 
-      {/* --- 새로 추가된 영역: 기사별 월별 정산 상세 리스트 --- */}
+      {/* --- 기사별 월별 정산 상세 리스트 --- */}
       <div className="mt-12 space-y-4">
         <h3 className="text-xl font-black text-slate-800 ml-2 flex items-center gap-2">
           <Receipt size={24} className="text-slate-700" />
