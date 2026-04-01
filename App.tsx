@@ -6,10 +6,10 @@ import BookingList from './components/BookingList';
 import CalendarView from './components/CalendarView';
 import SummaryView from './components/SummaryView';
 import DetailModal from './components/DetailModal';
-import MonthlySettlementView from './components/MonthlySettlementView'; // [새로 추가됨] 월별 정산 컴포넌트
+import MonthlySettlementView from './components/MonthlySettlementView'; 
 import { Download, LogOut, ChevronLeft } from 'lucide-react';
 
-type Tab = 'home' | 'list' | 'settlement' | 'settings'; // [수정됨] 'settlement' 탭 추가
+type Tab = 'home' | 'list' | 'settlement' | 'settings'; 
 type Role = 'admin' | 'engineer' | null;
 
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx8tgtYkrVcwdEYxrpgQfqwouVfanNm2qB_A27j8bl3hhKf-a1xLTLfFFKJFqqUXwIZ/exec";
@@ -92,7 +92,6 @@ const App: React.FC = () => {
   const handleSave = (data: any) => {
     const { fee: calcFee } = calcFinancials(data);
     
-    // 구글 시트에서 가져온 값 최우선 존중
     let n1 = 0;
     if (data.net !== undefined && data.net !== '') {
         n1 = parseNum(data.net);
@@ -109,7 +108,6 @@ const App: React.FC = () => {
 
     let f = (data.fee !== undefined && data.fee !== '') ? parseNum(data.fee) : calcFee;
 
-    // 완전 신규 예약 추가 시에만 자동 계산 허용
     if (!data.id && n1 === 0 && n2 === 0 && parseNum(data.priceTotal) > 0) {
       n1 = parseNum(data.priceTotal) - f;
     }
@@ -241,7 +239,8 @@ const App: React.FC = () => {
         {activeTab === 'home' && (
           <div className="space-y-4">
             <CalendarView bookings={bookings} onDetail={setDetailBooking} />
-            {role === 'admin' && <SummaryView bookings={bookings.filter(b => b.paid === '완료')} />}
+            {/* [수정됨] SummaryView에 필터링되지 않은 전체 bookings를 전달하여 미확정 건 및 월별 필터가 정상 작동하도록 함 */}
+            {role === 'admin' && <SummaryView bookings={bookings} />}
           </div>
         )}
         
@@ -255,7 +254,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* [새로 추가됨] 월별정산 탭 내용 렌더링 */}
         {activeTab === 'settlement' && role === 'admin' && (
           <div className="space-y-4">
              <MonthlySettlementView bookings={bookings} />
